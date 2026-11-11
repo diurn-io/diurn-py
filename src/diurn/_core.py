@@ -276,9 +276,7 @@ class Calendar:
             b0, b1 = first.breaks[0]
         else:
             b0 = b1 = None
-        return ScheduleRow(
-            day.date, first.open, b0, b1, last.close, day.kind, day.verification, day.reason
-        )
+        return ScheduleRow(day.date, first.open, b0, b1, last.close, day.kind, day.verification, day.reason)
 
     def _step(self, start: datetime.date, direction: int) -> datetime.date | None:
         d = start
@@ -371,9 +369,7 @@ def _day(raw: dict[str, Any]) -> Day:
             name=s["name"],
             open=parse_instant(s["open"]),
             close=parse_instant(s["close"]),
-            breaks=tuple(
-                (parse_instant(b["start"]), parse_instant(b["end"])) for b in s.get("breaks") or ()
-            ),
+            breaks=tuple((parse_instant(b["start"]), parse_instant(b["end"])) for b in s.get("breaks") or ()),
             products=s.get("products"),
             verification=s["verification"],
         )

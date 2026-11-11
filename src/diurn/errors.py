@@ -191,9 +191,7 @@ _BY_STATUS: dict[int, type[ApiError]] = {
 }
 
 
-def from_response(
-    status: int, body: dict[str, Any] | None, retry_after: float | None = None
-) -> ApiError:
+def from_response(status: int, body: dict[str, Any] | None, retry_after: float | None = None) -> ApiError:
     """The error class for an API error response."""
     body = body or {}
     tag = str(body.get("error") or f"http_{status}")

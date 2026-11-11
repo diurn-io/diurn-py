@@ -18,13 +18,14 @@ A key is free at <https://diurn.io/signin/>; set `DIURN_API_KEY`.
 
 ```python
 import diurn
+
 xnys = diurn.get_calendar("XNYS")
-xnys.is_session("2026-11-26")                       # False: Thanksgiving
-xnys.next_session("2026-11-25")                     # Timestamp('2026-11-27 00:00:00')
+xnys.is_session("2026-11-26")  # False: Thanksgiving
+xnys.next_session("2026-11-25")  # Timestamp('2026-11-27 00:00:00')
 xnys.sessions_in_range("2026-11-01", "2026-11-30")  # DatetimeIndex
-xnys.is_open_at_time("2026-11-27T18:30:00Z")        # False: an early close at 13:00
-xnys.next_close("2026-11-27T15:00:00Z")             # Timestamp('2026-11-27 13:00:00-0500', tz='America/New_York')
-xnys.schedule("2026-11-01", "2026-11-30")           # open, break_start, break_end, close, kind, verification, reason
+xnys.is_open_at_time("2026-11-27T18:30:00Z")  # False: an early close at 13:00
+xnys.next_close("2026-11-27T15:00:00Z")  # Timestamp('2026-11-27 13:00:00-0500', tz='America/New_York')
+xnys.schedule("2026-11-01", "2026-11-30")  # open, break_start, break_end, close, kind, verification, reason
 ```
 
 ## Three flavors, one calendar
@@ -39,10 +40,12 @@ The same calendar, with the same methods, in three sets of types:
 
 ```python
 import diurn.sf as dsf
-dsf.get_calendar("XTKS").schedule("2026-11-02", "2026-11-06")   # sf.Frame
+
+dsf.get_calendar("XTKS").schedule("2026-11-02", "2026-11-06")  # sf.Frame
 
 import diurn.py as dpy
-dpy.get_calendar("XHKG").next_session("2026-12-24")              # datetime.date(2026, 12, 28)
+
+dpy.get_calendar("XHKG").next_session("2026-12-24")  # datetime.date(2026, 12, 28)
 ```
 
 Every method accepts dates as `datetime.date`, ISO strings, pandas Timestamps
@@ -83,9 +86,9 @@ differences, made on purpose:
 venue search, multi-venue status, exceptions, trading-day arithmetic, usage.
 
 ```python
-client = diurn.Client()                     # DIURN_API_KEY, DIURN_API_URL
-client.statuses(["XNYS", "XLON", "XTKS"])   # whether each is trading now
-client.usage()                              # your plan's meters
+client = diurn.Client()  # DIURN_API_KEY, DIURN_API_URL
+client.statuses(["XNYS", "XLON", "XTKS"])  # whether each is trading now
+client.usage()  # your plan's meters
 ```
 
 ## Errors

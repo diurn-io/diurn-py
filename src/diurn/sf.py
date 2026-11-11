@@ -107,9 +107,7 @@ def get_calendar(
     as_of: datetime.datetime | str | None = None,
 ) -> Calendar:
     """The calendar for a MIC, in StaticFrame types."""
-    core = _core.Calendar(
-        mic, client, on_unknown=on_unknown, product=product, cache=cache, as_of=as_of
-    )
+    core = _core.Calendar(mic, client, on_unknown=on_unknown, product=product, cache=cache, as_of=as_of)
     return Calendar(core)
 
 
@@ -136,6 +134,6 @@ def _schedule(rows: Sequence[ScheduleRow]) -> sf.Frame:
     for col in ("kind", "verification"):
         columns[col] = np.array([getattr(r, col) for r in rows], dtype=str)
     columns["reason"] = np.array([r.reason for r in rows], dtype=object)
-    return sf.Frame.from_dict(
-        columns, index=_index([r.date for r in rows]), name="schedule"
-    ).rename(index="session")
+    return sf.Frame.from_dict(columns, index=_index([r.date for r in rows]), name="schedule").rename(
+        index="session"
+    )

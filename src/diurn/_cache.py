@@ -79,9 +79,7 @@ class DiskCache:
             path.parent.mkdir(parents=True, exist_ok=True)
             # A temporary file of its own, so processes sharing the cache
             # cannot write into one another's before the rename.
-            with tempfile.NamedTemporaryFile(
-                "w", dir=path.parent, suffix=".tmp", delete=False
-            ) as tmp:
+            with tempfile.NamedTemporaryFile("w", dir=path.parent, suffix=".tmp", delete=False) as tmp:
                 tmp.write(json.dumps(value))
             Path(tmp.name).replace(path)
         except OSError:

@@ -66,9 +66,7 @@ class Transport:
         self.last_headers: Mapping[str, str] = {}
 
     def get(self, path: str, params: Mapping[str, Any] | None = None) -> Any:
-        query = urllib.parse.urlencode(
-            {k: _param(v) for k, v in (params or {}).items() if v is not None}
-        )
+        query = urllib.parse.urlencode({k: _param(v) for k, v in (params or {}).items() if v is not None})
         return self.request("GET", path + (f"?{query}" if query else ""), None)
 
     def post(self, path: str, body: Mapping[str, Any]) -> Any:

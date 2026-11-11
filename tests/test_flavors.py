@@ -26,7 +26,13 @@ def test_pandas_schedule(client: Client) -> None:
     x = diurn.get_calendar("XTKS", client=client, cache=False)
     frame = x.schedule("2026-11-02", "2026-11-06")
     assert list(frame.columns) == [
-        "open", "break_start", "break_end", "close", "kind", "verification", "reason"
+        "open",
+        "break_start",
+        "break_end",
+        "close",
+        "kind",
+        "verification",
+        "reason",
     ]
     assert frame.index.name == "session"
     assert pd.Timestamp("2026-11-03") not in frame.index  # Culture Day

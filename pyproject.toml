@@ -31,12 +31,12 @@ classifiers = [
 pd = ["pandas>=2.0"]
 sf = ["static-frame>=5.2"]
 dev = [
-    "pytest>=8",
+    "pytest==9.2.0",
     "mypy==2.4.1",
     "ruff==0.17.4",
     "build",
     "twine",
-    "pandas>=2.0",
+    "pandas==3.1.1",
     "pandas-stubs",
     "static-frame==5.2.1",
 ]
@@ -66,6 +66,12 @@ files = ["src/diurn", "tools"]
 
 [tool.ruff]
 line-length = 110
+quote-style = "single"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+docstring-code-format = true
+docstring-code-line-length = "dynamic"
 target-version = "py312"
 extend-exclude = ["src/diurn/_generated"]
 

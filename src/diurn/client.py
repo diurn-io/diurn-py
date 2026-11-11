@@ -74,9 +74,7 @@ class Client:
         cursor: str | None = None,
     ) -> m.VenuesResponse:
         """List and search venues. Free and unmetered."""
-        params = dict(
-            q=q, country=country, resolution=resolution, status=status, limit=limit, cursor=cursor
-        )
+        params = dict(q=q, country=country, resolution=resolution, status=status, limit=limit, cursor=cursor)
         return m.VenuesResponse.from_json(self.transport.get("/v1/venues", params))
 
     def usage(self) -> m.UsageView:

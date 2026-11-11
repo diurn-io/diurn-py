@@ -30,8 +30,7 @@ try:
     import pandas as pd
 except ImportError as e:  # pragma: no cover - depends on the environment
     raise ImportError(
-        "the pandas flavor needs pandas: pip install 'diurn[pd]' "
-        "(or use diurn.py, which needs nothing)"
+        "the pandas flavor needs pandas: pip install 'diurn[pd]' (or use diurn.py, which needs nothing)"
     ) from e
 
 from . import _core
@@ -120,9 +119,7 @@ def get_calendar(
 ) -> Calendar:
     """The calendar for a MIC, in pandas types. The key is `DIURN_API_KEY`
     unless `client` carries one."""
-    core = _core.Calendar(
-        mic, client, on_unknown=on_unknown, product=product, cache=cache, as_of=as_of
-    )
+    core = _core.Calendar(mic, client, on_unknown=on_unknown, product=product, cache=cache, as_of=as_of)
     return Calendar(core)
 
 
