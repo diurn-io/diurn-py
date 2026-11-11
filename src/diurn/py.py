@@ -1,6 +1,7 @@
 """The calendar in plain Python types: `datetime.date` for sessions, aware
 `datetime` for instants (in the venue's zone), lists for ranges, and a list of
-`ScheduleRow` for a schedule. No dependency beyond the standard library.
+`ScheduleRow` for a schedule. No dependency beyond the standard library:
+importing this, or `diurn` itself, never imports pandas or NumPy.
 
     import diurn.py as dpy
     xnys = dpy.get_calendar("XNYS")

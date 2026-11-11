@@ -16,8 +16,11 @@ from __future__ import annotations
 import datetime
 from collections.abc import Sequence
 
-import numpy as np
-import static_frame as sf
+try:
+    import numpy as np
+    import static_frame as sf
+except ImportError as e:  # pragma: no cover - depends on the environment
+    raise ImportError("the StaticFrame flavor needs static-frame: pip install 'diurn[sf]'") from e
 
 from . import _core
 from ._core import OnUnknown, ScheduleRow
@@ -44,7 +47,17 @@ class Calendar:
 
     @property
     def name(self) -> str:
+        """The MIC, as `exchange_calendars` names a calendar by its code."""
         return self.core.name
+
+    @property
+    def market_name(self) -> str:
+        return self.core.market_name
+
+    @property
+    def products(self) -> tuple[str, ...]:
+        """The product schedules the venue keeps; empty for almost every one."""
+        return self.core.products
 
     @property
     def tz(self) -> str:
@@ -105,13 +118,15 @@ def _date(d: datetime.date | None) -> np.datetime64:
 
 
 def _index(dates: Sequence[datetime.date]) -> sf.IndexDate:
-    return sf.IndexDate(np.array([np.datetime64(d, "D") for d in dates], dtype="datetime64[D]"))
+    array = np.array([np.datetime64(d, "D") for d in dates], dtype="datetime64[D]")
+    array.flags.writeable = False
+    return sf.IndexDate(array)
 
 
 def _utc(t: datetime.datetime | None) -> np.datetime64:
     if t is None:
         return NAT
-    return np.datetime64(t.astimezone(datetime.timezone.utc).replace(tzinfo=None), "s")
+    return np.datetime64(t.astimezone(datetime.UTC).replace(tzinfo=None), "s")
 
 
 def _schedule(rows: Sequence[ScheduleRow]) -> sf.Frame:

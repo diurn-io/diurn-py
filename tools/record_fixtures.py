@@ -26,6 +26,12 @@ REQUESTS = [
     "/v1/venues/XNYS/sessions?from=2027-01-01&to=2027-12-31",
     "/v1/venues/XTKS/sessions?from=2026-01-01&to=2026-12-31",
     "/v1/venues/XHKG/sessions?from=2026-01-01&to=2026-12-31",
+    # Every session scoped to a product: CME's metals and energy, by way of NYMEX.
+    "/v1/venues/XCEC",
+    "/v1/venues/XCEC/sessions?from=2026-01-01&to=2026-12-31",
+    # A holiday that trades: NSE's Muhurat session on 8 November.
+    "/v1/venues/XNSE",
+    "/v1/venues/XNSE/sessions?from=2026-01-01&to=2026-12-31",
 ]
 
 

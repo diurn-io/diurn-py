@@ -17,6 +17,7 @@ import hashlib
 import json
 import os
 import shutil
+import tempfile
 import time
 from collections.abc import Callable
 from pathlib import Path
@@ -76,9 +77,13 @@ class DiskCache:
         value = fetch()
         try:
             path.parent.mkdir(parents=True, exist_ok=True)
-            tmp = path.with_suffix(".tmp")
-            tmp.write_text(json.dumps(value))
-            tmp.replace(path)
+            # A temporary file of its own, so processes sharing the cache
+            # cannot write into one another's before the rename.
+            with tempfile.NamedTemporaryFile(
+                "w", dir=path.parent, suffix=".tmp", delete=False
+            ) as tmp:
+                tmp.write(json.dumps(value))
+            Path(tmp.name).replace(path)
         except OSError:
             pass  # an unwritable cache costs a request, never an answer
         return value

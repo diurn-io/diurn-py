@@ -17,11 +17,12 @@ from dataclasses import dataclass
 from typing import Any
 
 from . import errors
+from ._version import __version__
 
-__all__ = ["Response", "Send", "Transport", "DEFAULT_URL"]
+__all__ = ["DEFAULT_URL", "Response", "Send", "Transport"]
 
 DEFAULT_URL = "https://api.diurn.io"
-USER_AGENT = "diurn-py/0.1.0"
+USER_AGENT = f"diurn-py/{__version__}"
 
 
 @dataclass(frozen=True)

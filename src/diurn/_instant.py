@@ -62,9 +62,9 @@ def to_instant(value: object) -> datetime.datetime:
         # numpy datetime64 carries no zone; it is UTC by convention.
         item = _datetime64_item(value)
         if isinstance(item, datetime.datetime):
-            value = item.replace(tzinfo=datetime.timezone.utc)
+            value = item.replace(tzinfo=datetime.UTC)
         elif isinstance(item, datetime.date):
-            value = datetime.datetime.combine(item, datetime.time(), datetime.timezone.utc)
+            value = datetime.datetime.combine(item, datetime.time(), datetime.UTC)
     if not isinstance(value, datetime.datetime):
         raise TypeError(f"not an instant: {value!r}")
     if value.tzinfo is None:

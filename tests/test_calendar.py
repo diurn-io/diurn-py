@@ -172,3 +172,72 @@ def test_a_product_must_exist(client: Client) -> None:
 def test_an_unknown_mic_is_refused(client: Client) -> None:
     with pytest.raises(diurn.UnknownVenue):
         cal(client, "ZZZZ")
+
+
+def test_a_product_picks_its_own_sessions(client: Client) -> None:
+    # COMEX, answered through NYMEX: every session is scoped to a product, and
+    # the API names it in the venue's words, as a string.
+    whole = cal(client, "XCEC")
+    assert "Equity Index" in whole.products
+    (globex,) = whole.day("2026-11-03").sessions
+    assert globex.products == "Equity Index"
+    equity = cal(client, "XCEC", product="Equity Index")
+    (row,) = equity.schedule("2026-11-03", "2026-11-03")
+    assert row.open is not None and row.open.strftime("%a %H:%M") == "Mon 17:00"
+    assert equity.is_open_at_time("2026-11-03T15:00:00Z") is True
+    # A product with no hours of its own is never handed another's.
+    metals = cal(client, "XCEC", product="Energy and Metals")
+    (row,) = metals.schedule("2026-11-03", "2026-11-03")
+    assert row.open is None and row.close is None
+    assert metals.is_open_at_time("2026-11-03T15:00:00Z") is False
+
+
+def test_a_holiday_that_trades_is_a_session(client: Client) -> None:
+    # NSE's Muhurat: 8 November is a holiday carrying one evening session,
+    # and trades, as /v1/trading-days counts it.
+    nse = cal(client, "XNSE")
+    assert nse.day("2026-11-08").kind == "holiday"
+    assert nse.is_session("2026-11-08") is True
+    assert nse.is_open_at_time("2026-11-08T09:30:00Z") is True  # 15:00 in Mumbai
+    assert nse.is_session("2026-11-10") is False  # a holiday without one
+    assert D(2026, 11, 8) in nse.sessions_in_range("2026-11-06", "2026-11-10")
+    assert nse.next_session("2026-11-07") == D(2026, 11, 8)
+
+
+def test_a_calendar_is_named_by_its_code(client: Client) -> None:
+    x = cal(client)
+    assert x.name == "XNYS"  # as exchange_calendars names one
+    assert x.market_name == "NEW YORK STOCK EXCHANGE, INC."
+    assert diurn.get_calendar("XNYS", client=client, cache=False).market_name == x.market_name
+
+
+def test_a_scan_that_finds_nothing_says_so(send: FakeSend) -> None:
+    # Three years with no session: the stepping methods give up, and say so
+    # rather than return a missing value nobody asked for.
+    for year in (2026, 2027, 2028, 2029):
+        path = f"/v1/venues/XNYS/sessions?from={year}-01-01&to={year}-12-31"
+        send.overrides[path] = (200, {"mic": "XNYS", "days": _closed_year(year)})
+    client = Client(api_key="k", base_url="https://api.test", send=send)
+    with pytest.raises(diurn.Indeterminate, match="no session within"):
+        cal(client).next_session("2026-01-01")
+    assert cal(client, on_unknown="missing").next_session("2026-01-01") is None
+
+
+def _closed_year(year: int) -> list[dict[str, Any]]:
+    out = []
+    d = D(year, 1, 1)
+    while d.year == year:
+        out.append({"date": d.isoformat(), "kind": "holiday", "verification": "verified"})
+        d += datetime.timedelta(days=1)
+    return out
+
+
+def test_the_plan_window_is_asked_again_the_next_day(send: FakeSend) -> None:
+    client = Client(api_key="k", base_url="https://api.test", send=send)
+    x = cal(client)
+    x.is_session("2026-11-26")
+    x.is_session("2026-11-25")
+    assert send.requests.count("/v1/usage") == 1, "once a day"
+    x._window_day = D(2000, 1, 1)  # as if the calendar had been open since then
+    x.is_session("2026-11-24")
+    assert send.requests.count("/v1/usage") == 2

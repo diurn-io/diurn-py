@@ -7,9 +7,12 @@ interface. Every day says how it is evidenced, and a day Diurn cannot answer
 is never reported as closed.
 
 ```sh
-pip install diurn            # pandas
-pip install diurn[sf]        # and StaticFrame
+pip install diurn            # the client and diurn.py: standard library only
+pip install 'diurn[pd]'      # the pandas flavor, also diurn.get_calendar
+pip install 'diurn[sf]'      # the StaticFrame flavor
 ```
+
+Nothing imports pandas or NumPy until its flavor is used.
 
 A key is free at <https://diurn.io/signin/>; set `DIURN_API_KEY`.
 
@@ -30,8 +33,8 @@ The same calendar, with the same methods, in three sets of types:
 
 | | session | range of sessions | `schedule` | instants |
 |---|---|---|---|---|
-| `diurn` / `diurn.pd` | `pd.Timestamp` | `pd.DatetimeIndex` | `pd.DataFrame` | aware `pd.Timestamp`, venue's zone |
-| `diurn.sf` | `np.datetime64[D]` | `sf.IndexDate` | `sf.Frame` | `np.datetime64[s]`, UTC |
+| `diurn` / `diurn.pd` (`diurn[pd]`) | `pd.Timestamp` | `pd.DatetimeIndex` | `pd.DataFrame` | aware `pd.Timestamp`, venue's zone |
+| `diurn.sf` (`diurn[sf]`) | `np.datetime64[D]` | `sf.IndexDate` | `sf.Frame` | `np.datetime64[s]`, UTC |
 | `diurn.py` | `datetime.date` | `list[date]` | `list[ScheduleRow]` | aware `datetime`, venue's zone |
 
 ```python
@@ -53,6 +56,9 @@ ISO strings with an offset. A naive datetime is refused: it is not an instant.
 `is_open_at_time` and `schedule`, as in `exchange_calendars`, with these
 differences, made on purpose:
 
+- **A session is a day the venue trades,** as the API's `/v1/trading-days`
+  counts one: `open`, `early_close`, `open_for_some`, and a `holiday` that
+  carries a session, such as NSE's Muhurat.
 - **`unknown` is neither open nor closed.** Past what Diurn can answer, a
   method that depends on such a day raises `diurn.Indeterminate`. Pass
   `on_unknown="missing"` to get `None` (or `NaT`) instead; ranges then leave
@@ -63,9 +69,13 @@ differences, made on purpose:
   answered by an API rather than precomputed. It adds `kind`, `verification`
   and `reason`; `all_days=True` keeps holidays and unknown days as rows.
 - **`next_session` and `previous_session` take any date**, not only a session.
-- **Product schedules.** Where a venue keeps several (`calendar.core.products`),
+- **Product schedules.** Where a venue keeps several (`calendar.products`),
   `get_calendar(mic, product=...)` picks one; by default the whole venue's
-  sessions are used.
+  sessions are used. A product with no hours of its own has none: it is never
+  given another product's.
+- **`name` is the MIC**, as `exchange_calendars` names a calendar by its code;
+  the registry's name is `market_name`. **`tz` is the IANA name**, a string,
+  where `exchange_calendars` has a `ZoneInfo`.
 
 ## The API itself
 
@@ -84,7 +94,11 @@ Typed, never prose: `AuthError` (no or inactive key), `UnknownVenue`,
 `OutOfWindow` (with `allowed_from` and `allowed_to`), `NotInPlan`,
 `MicCapExceeded` (with `mics_in_use` and `resets_at`), `RateLimited` (with
 `retry_after`), `Indeterminate` and `TransportError`, all under
-`diurn.DiurnError`.
+`diurn.DiurnError`. Every plan refusal is an `OverLimit` with `limit` and
+`resets_at`. `Indeterminate` is raised the same whether the calendar met an
+unknown day or the API did (its `422`, as `IndeterminateResponse`, also an
+`ApiError`); a stepping method that finds no session within 800 days raises
+it too.
 
 ## Caching
 
@@ -96,13 +110,18 @@ repeat query makes no metered request. The directory is `DIURN_CACHE_DIR`, or
 
 ## Development
 
-Python 3.11 or later; nothing beyond the standard library to build.
+Python 3.12 or later; nothing beyond the standard library to build.
 
 ```sh
 python -m venv .venv && .venv/bin/pip install -e '.[dev]'
 .venv/bin/python -m pytest
 .venv/bin/python -m mypy
+.venv/bin/python -m ruff check .
 ```
+
+The version is in one place, `src/diurn/_version.py`. Publishing a GitHub
+release runs CI, builds and checks the distributions (`twine check`, both
+licenses in the wheel, an import without pandas) and uploads them to PyPI.
 
 The wire layer (`src/diurn/_generated/`) is generated from the API's OpenAPI
 document and committed. To refresh it, from a checkout of `diurn-platform`:
@@ -115,3 +134,7 @@ python tools/generate.py           # CI runs it with --check
 The tests replay responses recorded from a local API server
 (`python tools/record_fixtures.py http://127.0.0.1:8099`), so they need no
 network or key.
+
+## License
+
+MIT or Apache-2.0, at your option.

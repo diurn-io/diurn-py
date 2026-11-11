@@ -3,8 +3,9 @@
 
 A calendar loads a venue's days from the API a calendar year at a time,
 trimmed to the dates the plan may ask about, and answers every method from
-them. A "session" is a trading day, as in `exchange_calendars`: a day whose
-kind is `open`, `early_close` or `open_for_some`.
+them. A "session" is a trading day, as in `exchange_calendars`, and as the API's
+`/v1/trading-days` counts one: a day whose kind is `open`, `early_close` or
+`open_for_some`, or a `holiday` that carries a session (NSE's Muhurat).
 
 **`unknown` is never a session and never a closure.** Past what Diurn can
 answer, a method that would depend on such a day raises `Indeterminate`, or,
@@ -22,7 +23,7 @@ from ._cache import DiskCache
 from ._instant import parse_instant, to_date, to_instant
 from .client import Client
 
-__all__ = ["Calendar", "Day", "Session", "ScheduleRow", "TRADING_KINDS", "OnUnknown"]
+__all__ = ["TRADING_KINDS", "Calendar", "Day", "OnUnknown", "ScheduleRow", "Session"]
 
 TRADING_KINDS = frozenset({"open", "early_close", "open_for_some"})
 OnUnknown = Literal["raise", "missing"]
@@ -35,13 +36,14 @@ _SCAN_DAYS = 800
 @dataclass(frozen=True, slots=True)
 class Session:
     """One session: its open and close as aware datetimes in the venue's
-    zone, its breaks, and the products it is for (`None`: the whole venue)."""
+    zone, its breaks, and the product it is for, in the venue's own words
+    (`None`: the whole venue). The names are those in `Calendar.products`."""
 
     name: str
     open: datetime.datetime
     close: datetime.datetime
     breaks: tuple[tuple[datetime.datetime, datetime.datetime], ...]
-    products: tuple[str, ...] | None
+    products: str | None
     verification: str
 
 
@@ -59,7 +61,9 @@ class Day:
 
     @property
     def is_session(self) -> bool:
-        return self.kind in TRADING_KINDS
+        """Whether the venue trades: as `/v1/trading-days` reads a day. A
+        holiday trades if it carries a session, which is Muhurat."""
+        return self.kind in TRADING_KINDS or (self.kind == "holiday" and bool(self.sessions))
 
 
 @dataclass(frozen=True, slots=True)
@@ -103,7 +107,9 @@ class Calendar:
         if record.timezone is None or record.resolution is None:
             raise errors.UnknownVenue(404, "no_calendar", f"no calendar answers {record.mic}")
         self.mic = record.mic
-        self.name = record.name
+        # As in `exchange_calendars`, a calendar's name is its code.
+        self.name = record.mic
+        self.market_name = record.name
         self.tz = record.timezone
         self.products: tuple[str, ...] = tuple(record.products)
         if product is not None and product not in self.products:
@@ -121,9 +127,10 @@ class Calendar:
         self._days: dict[datetime.date, Day] = {}
         self._years: set[int] = set()
         self._window: tuple[datetime.date | None, datetime.date | None] | None = None
+        self._window_day: datetime.date | None = None
 
     def __repr__(self) -> str:
-        return f"<Calendar {self.mic} {self.name} ({self.tz})>"
+        return f"<Calendar {self.mic} {self.market_name} ({self.tz})>"
 
     # --- days ------------------------------------------------------------------
 
@@ -252,9 +259,7 @@ class Calendar:
 
     def _sessions(self, day: Day) -> tuple[Session, ...]:
         if self.product is not None:
-            return tuple(
-                s for s in day.sessions if s.products is None or self.product in s.products
-            )
+            return tuple(s for s in day.sessions if s.products in (None, self.product))
         whole = tuple(s for s in day.sessions if s.products is None)
         return whole or day.sessions
 
@@ -285,7 +290,19 @@ class Calendar:
                 return None
             if day.is_session:
                 return d
+        self._nothing_found(start)
         return None
+
+    def _nothing_found(self, start: datetime.date) -> None:
+        """A scan that found nothing in `_SCAN_DAYS`: no answer, said as one.
+        With `on_unknown="missing"` the caller answers a missing value, as for
+        an unknown day; otherwise this raises rather than let a missing value
+        the caller did not ask for stand in for one."""
+        if self.on_unknown == "missing":
+            return
+        raise errors.Indeterminate(
+            self.mic, start, f"{self.mic} has no session within {_SCAN_DAYS} days of {start.isoformat()}"
+        )
 
     def _next_edge(self, t: datetime.datetime, edge: str) -> datetime.datetime | None:
         d = t.astimezone(_zone(self.tz)).date() - datetime.timedelta(days=1)
@@ -301,17 +318,21 @@ class Calendar:
                 if x > t:
                     return x
             d += datetime.timedelta(days=1)
+        self._nothing_found(t.date())
         return None
 
     def _plan_window(self) -> tuple[datetime.date | None, datetime.date | None]:
         """The dates the plan may ask about, from `/v1/usage` (free). Unbounded
-        when there is no plan to ask, as on a server without keys."""
-        if self._window is None:
+        when there is no plan to ask, as on a server without keys. Asked again
+        each UTC day, since the window moves with the date."""
+        today = datetime.datetime.now(datetime.UTC).date()
+        if self._window is None or self._window_day != today:
             try:
                 h = self.client.usage().horizon
                 self._window = (h.from_, h.to)
             except errors.ApiError:
                 self._window = (None, None)
+            self._window_day = today
         return self._window
 
     def _load(self, start: datetime.date, end: datetime.date) -> None:
@@ -353,7 +374,7 @@ def _day(raw: dict[str, Any]) -> Day:
             breaks=tuple(
                 (parse_instant(b["start"]), parse_instant(b["end"])) for b in s.get("breaks") or ()
             ),
-            products=tuple(s["products"]) if s.get("products") is not None else None,
+            products=s.get("products"),
             verification=s["verification"],
         )
         for s in raw.get("sessions") or ()

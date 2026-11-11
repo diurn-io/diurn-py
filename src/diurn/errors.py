@@ -12,19 +12,20 @@ import datetime
 from typing import Any
 
 __all__ = [
-    "DiurnError",
-    "TransportError",
     "ApiError",
     "AuthError",
-    "UnknownVenue",
     "BadRequest",
+    "DiurnError",
     "Indeterminate",
-    "OverLimit",
+    "IndeterminateResponse",
+    "MicCapExceeded",
     "NotInPlan",
     "OutOfWindow",
-    "MicCapExceeded",
+    "OverLimit",
     "RateLimited",
+    "TransportError",
     "Unavailable",
+    "UnknownVenue",
 ]
 
 
@@ -81,6 +82,26 @@ class Indeterminate(DiurnError):
         super().__init__(message or f"{mic} cannot be answered for {date.isoformat()}")
         self.mic = mic
         self.date = date
+
+
+class IndeterminateResponse(ApiError, Indeterminate):
+    """The API's `422 indeterminate`: a trading-day walk reached a date it
+    cannot answer (`Client.next_trading_day` and the joint steps, with
+    `on_unknown="error"`). An `Indeterminate`, so one `except` catches it
+    whether the calendar or the API found the day; `date` is that day, and
+    `mic` is empty, since the API names the date only."""
+
+    def __init__(self, status: int, error: str, message: str, body: dict[str, Any] | None = None):
+        # Both parents set attributes and call `super().__init__` with
+        # different arguments, so neither initialiser is chained: the fields
+        # of each are set here.
+        Exception.__init__(self, f"{error}: {message}" if message else error)
+        self.status = status
+        self.error = error
+        self.message = message
+        self.body = body or {}
+        self.mic = ""
+        self.date = _date(self.body.get("date"))  # type: ignore[assignment]
 
 
 class Unavailable(ApiError):
@@ -153,6 +174,7 @@ _BY_TAG: dict[str, type[ApiError]] = {
     "out_of_window": OutOfWindow,
     "mic_cap_exceeded": MicCapExceeded,
     "rate_limited": RateLimited,
+    "indeterminate": IndeterminateResponse,
     # A server without a key store (a local one) meters nothing.
     "not_metered": ApiError,
 }
@@ -161,6 +183,10 @@ _BY_STATUS: dict[int, type[ApiError]] = {
     400: BadRequest,
     401: AuthError,
     404: UnknownVenue,
+    422: IndeterminateResponse,
+    # A plan's refusal this version does not name yet (`venue_days_exceeded`,
+    # if budgets return) still carries `limit` and `resets_at`.
+    429: OverLimit,
     503: Unavailable,
 }
 

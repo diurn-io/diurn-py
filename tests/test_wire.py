@@ -91,3 +91,55 @@ def test_error_classes_by_tag() -> None:
 def test_a_mic_is_checked_before_any_request(client: Client) -> None:
     with pytest.raises(ValueError):
         client.venue("NYSE!")
+
+
+def test_an_indeterminate_answer_from_the_api_is_an_indeterminate(send: FakeSend) -> None:
+    path = "/v1/venues/XJPX/trading-days/next?from=2099-12-29&n=3&inclusive=false&on_unknown=error"
+    send.overrides[path] = (
+        422,
+        {
+            "error": "indeterminate",
+            "message": "2100-01-01 is beyond what can be answered",
+            "date": "2100-01-01",
+        },
+    )
+    client = Client(api_key="k", base_url="https://api.test", send=send)
+    with pytest.raises(diurn.Indeterminate) as e:
+        client.next_trading_day("XJPX", "2099-12-29", 3)
+    assert isinstance(e.value, diurn.ApiError) and e.value.status == 422
+    assert e.value.date == datetime.date(2100, 1, 1)
+
+
+def test_an_unnamed_plan_refusal_still_carries_its_numbers() -> None:
+    out = errors.from_response(
+        429,
+        {
+            "error": "venue_days_exceeded",
+            "message": "",
+            "limit": {"kind": "venue_days"},
+            "resets_at": "2026-12-01T00:00:00Z",
+        },
+    )
+    assert isinstance(out, diurn.OverLimit)
+    assert out.limit == {"kind": "venue_days"} and out.resets_at == "2026-12-01T00:00:00Z"
+
+
+def test_importing_diurn_does_not_import_pandas() -> None:
+    # pandas is the `pd` extra: only the pandas flavor loads it.
+    code = (
+        "import sys, diurn, diurn.py;"
+        "assert 'pandas' not in sys.modules and 'numpy' not in sys.modules;"
+        "diurn.get_calendar;"
+        "assert 'pandas' in sys.modules"
+    )
+    r = subprocess.run([sys.executable, "-c", code], cwd=ROOT)
+    assert r.returncode == 0
+
+
+def test_one_version_everywhere() -> None:
+    from importlib.metadata import version
+
+    from diurn._transport import USER_AGENT
+
+    assert diurn.__version__ == version("diurn")
+    assert f"diurn-py/{diurn.__version__}" == USER_AGENT

@@ -114,7 +114,7 @@ class Client:
         self, mic: str, at: InstantLike | None = None, *, as_of: InstantLike | None = None
     ) -> m.StatusResponse:
         """Whether the venue is trading at an instant (now, if `at` is None)."""
-        when = to_instant(at) if at is not None else datetime.datetime.now(datetime.timezone.utc)
+        when = to_instant(at) if at is not None else datetime.datetime.now(datetime.UTC)
         params = {"at": when, "as_of": _instant(as_of)}
         return m.StatusResponse.from_json(self.transport.get(f"/v1/venues/{_mic(mic)}/status", params))
 

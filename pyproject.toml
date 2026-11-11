@@ -1,24 +1,24 @@
 [build-system]
-requires = ["setuptools>=69"]
+requires = ["setuptools>=77"]  # PEP 639 license expressions
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "diurn"
-version = "0.1.0"
-description = "Exchange calendars and trading hours from the Diurn API, with an exchange_calendars-style interface."
+dynamic = ["version"]
+description = "Exchange calendars and trading hours from the Diurn API"
 readme = "README.md"
-license = "MIT"
-license-files = ["LICENSE"]
+license = "MIT OR Apache-2.0"
+license-files = ["LICENSE-MIT", "LICENSE-APACHE"]
 authors = [{ name = "Christopher Ariza" }]
 maintainers = [{ name = "Christopher Ariza" }]
-requires-python = ">=3.11"
-dependencies = ["pandas>=2.0"]
+requires-python = ">=3.12"
+# Nothing beyond the standard library; each frame flavor is an extra.
+dependencies = []
 keywords = ["exchange calendar", "trading hours", "market holidays", "MIC", "ISO 10383"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Financial and Insurance Industry",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
@@ -28,14 +28,27 @@ classifiers = [
 ]
 
 [project.optional-dependencies]
-sf = ["static-frame>=2.0"]
-dev = ["pytest>=8", "mypy>=1.10", "pandas-stubs", "static-frame>=2.0"]
+pd = ["pandas>=2.0"]
+sf = ["static-frame>=5.2"]
+dev = [
+    "pytest>=8",
+    "mypy==2.4.1",
+    "ruff==0.17.4",
+    "build",
+    "twine",
+    "pandas>=2.0",
+    "pandas-stubs",
+    "static-frame==5.2.1",
+]
 
 [project.urls]
 Homepage = "https://diurn.io"
 Documentation = "https://diurn.io/docs/"
 Repository = "https://github.com/diurn-io/diurn-py"
 Issues = "https://github.com/diurn-io/diurn-py/issues"
+
+[tool.setuptools.dynamic]
+version = { attr = "diurn._version.__version__" }
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -47,6 +60,14 @@ diurn = ["py.typed"]
 testpaths = ["tests"]
 
 [tool.mypy]
-python_version = "3.11"
+python_version = "3.15"
 strict = true
 files = ["src/diurn", "tools"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py312"
+extend-exclude = ["src/diurn/_generated"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "RUF"]

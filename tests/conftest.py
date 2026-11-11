@@ -12,10 +12,10 @@ from typing import Any
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "tools"))
-from record_fixtures import name  # noqa: E402
+from record_fixtures import name
 
-from diurn._transport import Response  # noqa: E402
-from diurn.client import Client  # noqa: E402
+from diurn._transport import Response
+from diurn.client import Client
 
 FIXTURES = Path(__file__).parent / "fixtures"
 

@@ -26,7 +26,13 @@ from __future__ import annotations
 import datetime
 from collections.abc import Sequence
 
-import pandas as pd
+try:
+    import pandas as pd
+except ImportError as e:  # pragma: no cover - depends on the environment
+    raise ImportError(
+        "the pandas flavor needs pandas: pip install 'diurn[pd]' "
+        "(or use diurn.py, which needs nothing)"
+    ) from e
 
 from . import _core
 from ._core import OnUnknown, ScheduleRow
@@ -53,7 +59,17 @@ class Calendar:
 
     @property
     def name(self) -> str:
+        """The MIC, as `exchange_calendars` names a calendar by its code."""
         return self.core.name
+
+    @property
+    def market_name(self) -> str:
+        return self.core.market_name
+
+    @property
+    def products(self) -> tuple[str, ...]:
+        """The product schedules the venue keeps; empty for almost every one."""
+        return self.core.products
 
     @property
     def tz(self) -> str:
