@@ -43,7 +43,7 @@ dev = [
 
 [project.urls]
 Homepage = "https://diurn.io"
-Documentation = "https://diurn.io/docs/"
+Documentation = "https://diurn.io/docs/python/"
 Repository = "https://github.com/diurn-io/diurn-py"
 Issues = "https://github.com/diurn-io/diurn-py/issues"
 

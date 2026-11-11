@@ -44,6 +44,7 @@ class Calendar:
 
     @property
     def mic(self) -> str:
+        """The venue's ISO 10383 MIC."""
         return self.core.mic
 
     @property
@@ -53,6 +54,7 @@ class Calendar:
 
     @property
     def market_name(self) -> str:
+        """The venue's name in the ISO 10383 registry."""
         return self.core.market_name
 
     @property
@@ -62,6 +64,7 @@ class Calendar:
 
     @property
     def tz(self) -> str:
+        """The IANA zone the venue's sessions are quoted in."""
         return self.core.tz
 
     def is_session(self, date: object) -> bool | None:

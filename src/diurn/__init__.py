@@ -23,7 +23,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from . import errors
-from ._core import Day, ScheduleRow, Session
+from ._core import Day, ScheduleRow, ScheduleRowUTC, Session
 from ._version import __version__
 from .client import AsyncClient, Client
 from .errors import (
@@ -70,6 +70,7 @@ __all__ = [
     'OverLimit',
     'RateLimited',
     'ScheduleRow',
+    'ScheduleRowUTC',
     'Session',
     'TransportError',
     'UnknownVenue',
