@@ -11,15 +11,16 @@ Dates are `datetime.date` and instants aware `datetime` objects on the way in
 
 from __future__ import annotations
 
+import asyncio
 import datetime
-from collections.abc import Sequence
-from typing import Any, Literal
+from collections.abc import Callable, Coroutine, Sequence
+from typing import Any, Concatenate, Literal
 
 from ._generated import models as m
 from ._instant import to_date, to_instant
 from ._transport import Send, Transport
 
-__all__ = ['Client']
+__all__ = ['AsyncClient', 'Client']
 
 DateLike = datetime.date | str
 InstantLike = datetime.datetime | str
@@ -37,6 +38,11 @@ class Client:
     or https://api.diurn.io. Every endpoint but the registry record, `/health`
     and the OpenAPI document needs a key; a free one is at
     https://diurn.io/signin/.
+
+    `retries` (default 0) retries a request the server asks to be repeated
+    later (`rate_limited`, after its `Retry-After`) or that failed in transit
+    (a `503`, a dropped connection), waiting at most `max_wait` seconds at a
+    time. A plan's refusal is never retried.
     """
 
     def __init__(
@@ -45,8 +51,17 @@ class Client:
         base_url: str | None = None,
         timeout: float = 30.0,
         send: Send | None = None,
+        retries: int = 0,
+        max_wait: float = 60.0,
     ):
-        self.transport = Transport(api_key=api_key, base_url=base_url, timeout=timeout, send=send)
+        self.transport = Transport(
+            api_key=api_key,
+            base_url=base_url,
+            timeout=timeout,
+            send=send,
+            retries=retries,
+            max_wait=max_wait,
+        )
 
     @property
     def last_headers(self) -> dict[str, str]:
@@ -304,3 +319,77 @@ def _mics(mics: Sequence[str]) -> list[str]:
 
 def _instant(value: InstantLike | None) -> datetime.datetime | None:
     return None if value is None else to_instant(value)
+
+
+# --- async ----------------------------------------------------------------------
+
+
+def _threaded[**P, R](
+    method: Callable[Concatenate[Client, P], R],
+) -> Callable[Concatenate[AsyncClient, P], Coroutine[Any, Any, R]]:
+    """`Client.method` as a coroutine, run in a worker thread: its signature,
+    name and docstring are kept, so type checkers and `help()` see the same
+    call."""
+
+    async def run(self: AsyncClient, /, *args: P.args, **kwargs: P.kwargs) -> R:
+        return await asyncio.to_thread(method, self.client, *args, **kwargs)
+
+    run.__name__ = method.__name__
+    run.__qualname__ = f'AsyncClient.{method.__name__}'
+    run.__doc__ = method.__doc__
+    return run
+
+
+class AsyncClient:
+    """The same operations as `Client`, as coroutines.
+
+        client = diurn.AsyncClient()
+        statuses = await asyncio.gather(*(client.status(m) for m in mics))
+
+    Standard library only: each call runs the synchronous client in a worker
+    thread (`asyncio.to_thread`), so requests made together run together, as
+    many at once as the default executor has threads. The arguments are
+    `Client`'s, and `client` is the `Client` underneath. `last_headers` is
+    that of whichever call finished last.
+    """
+
+    def __init__(
+        self,
+        api_key: str | None = None,
+        base_url: str | None = None,
+        timeout: float = 30.0,
+        send: Send | None = None,
+        retries: int = 0,
+        max_wait: float = 60.0,
+    ):
+        self.client = Client(
+            api_key=api_key,
+            base_url=base_url,
+            timeout=timeout,
+            send=send,
+            retries=retries,
+            max_wait=max_wait,
+        )
+
+    @property
+    def last_headers(self) -> dict[str, str]:
+        return self.client.last_headers
+
+    health = _threaded(Client.health)
+    venue = _threaded(Client.venue)
+    venues = _threaded(Client.venues)
+    usage = _threaded(Client.usage)
+    sessions = _threaded(Client.sessions)
+    day = _threaded(Client.day)
+    status = _threaded(Client.status)
+    next_open = _threaded(Client.next_open)
+    next_close = _threaded(Client.next_close)
+    next_trading_day = _threaded(Client.next_trading_day)
+    previous_trading_day = _threaded(Client.previous_trading_day)
+    count_trading_days = _threaded(Client.count_trading_days)
+    statuses = _threaded(Client.statuses)
+    exceptions = _threaded(Client.exceptions)
+    sessions_bulk = _threaded(Client.sessions_bulk)
+    trading_days = _threaded(Client.trading_days)
+    joint_next_trading_day = _threaded(Client.joint_next_trading_day)
+    joint_previous_trading_day = _threaded(Client.joint_previous_trading_day)

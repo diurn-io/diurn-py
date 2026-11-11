@@ -91,6 +91,22 @@ class Calendar:
     def next_close(self, when: object) -> np.datetime64:
         return _utc(self.core.next_close(when))
 
+    def session_open(self, session: object) -> np.datetime64:
+        """The session's first open, in UTC; NaT where its hours are not held."""
+        return _utc(self.core.session_open(session))
+
+    def session_close(self, session: object) -> np.datetime64:
+        return _utc(self.core.session_close(session))
+
+    def session_break_start(self, session: object) -> np.datetime64:
+        return _utc(self.core.session_break_start(session))
+
+    def session_break_end(self, session: object) -> np.datetime64:
+        return _utc(self.core.session_break_end(session))
+
+    def sessions_distance(self, start: object, end: object) -> int | None:
+        return self.core.sessions_distance(start, end)
+
     def schedule(self, start: object, end: object, *, all_days: bool = False) -> sf.Frame:
         """One row per session (or per day, with `all_days=True`): `open`,
         `break_start`, `break_end`, `close` in UTC, then `kind`,

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import os
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -50,7 +51,15 @@ def urllib_send(
 
 
 class Transport:
-    """Sends requests to the API and turns its answers into JSON or errors."""
+    """Sends requests to the API and turns its answers into JSON or errors.
+
+    `retries` (default 0) retries what waiting can fix: `rate_limited`, after
+    the server's `Retry-After`; and a `503` or a failed connection, backing
+    off from half a second. A plan's refusal (a MIC cap, a window) is never
+    retried: waiting seconds does not change it. Nor is a wait longer than
+    `max_wait` seconds slept through: the error is raised instead. Every
+    request this client makes is a read, so a retry is always safe.
+    """
 
     def __init__(
         self,
@@ -58,11 +67,19 @@ class Transport:
         base_url: str | None = None,
         timeout: float = 30.0,
         send: Send | None = None,
+        retries: int = 0,
+        max_wait: float = 60.0,
+        sleep: Callable[[float], None] = time.sleep,
     ):
+        if retries < 0:
+            raise ValueError('retries is not negative')
         self.api_key = api_key if api_key is not None else os.environ.get('DIURN_API_KEY')
         self.base_url = (base_url or os.environ.get('DIURN_API_URL') or DEFAULT_URL).rstrip('/')
         self.timeout = timeout
         self.send = send or urllib_send
+        self.retries = retries
+        self.max_wait = max_wait
+        self.sleep = sleep
         self.last_headers: Mapping[str, str] = {}
 
     def get(self, path: str, params: Mapping[str, Any] | None = None) -> Any:
@@ -74,6 +91,31 @@ class Transport:
         return self.request('POST', path, data)
 
     def request(self, method: str, path_and_query: str, body: bytes | None) -> Any:
+        attempt = 0
+        while True:
+            try:
+                return self._once(method, path_and_query, body)
+            except (errors.RateLimited, errors.Unavailable, errors.TransportError) as e:
+                wait = self._wait(e, attempt)
+                if wait is None:
+                    raise
+                self.sleep(wait)
+                attempt += 1
+
+    def _wait(self, error: errors.DiurnError, attempt: int) -> float | None:
+        """Seconds to wait before retrying, or None to raise now."""
+        if attempt >= self.retries:
+            return None
+        told: float | None = None
+        if isinstance(error, errors.RateLimited):
+            told = error.retry_after
+        elif isinstance(error, errors.Unavailable):
+            told = _retry_after(self.last_headers)
+        if told is not None:
+            return told if told <= self.max_wait else None
+        return min(0.5 * 2.0**attempt, self.max_wait)
+
+    def _once(self, method: str, path_and_query: str, body: bytes | None) -> Any:
         headers = {'Accept': 'application/json', 'User-Agent': USER_AGENT}
         if body is not None:
             headers['Content-Type'] = 'application/json'

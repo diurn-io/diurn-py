@@ -287,7 +287,56 @@ class Calendar:
             rows.append(self._row(day))
         return rows
 
+    # --- one session's times, as exchange_calendars gives them ---------------------
+
+    def session_open(self, session: object) -> datetime.datetime | None:
+        """The session's first open. `None` where Diurn holds no hours for it
+        (a day known to trade whose hours are not published)."""
+        row = self._session_row(session)
+        return None if row is None else row.open
+
+    def session_close(self, session: object) -> datetime.datetime | None:
+        """The session's last close; `None` where its hours are not held."""
+        row = self._session_row(session)
+        return None if row is None else row.close
+
+    def session_break_start(self, session: object) -> datetime.datetime | None:
+        """The start of the session's break (Tokyo's lunch); `None` without one."""
+        row = self._session_row(session)
+        return None if row is None else row.break_start
+
+    def session_break_end(self, session: object) -> datetime.datetime | None:
+        """The end of the session's break; `None` without one."""
+        row = self._session_row(session)
+        return None if row is None else row.break_end
+
+    def sessions_distance(self, start: object, end: object) -> int | None:
+        """The number of sessions from `start` to `end`, both included;
+        negative when `end` is before `start`, as in `exchange_calendars`. An
+        unknown day in the range raises, or with `on_unknown="missing"` makes
+        the answer `None`: a count that skipped it would be wrong, not partial."""
+        a, b = to_date(start), to_date(end)
+        lo, hi = (a, b) if a <= b else (b, a)
+        count = 0
+        for day in self.days_in_range(lo, hi):
+            if day.is_unknown:
+                self._unknown(day)
+                return None
+            count += day.is_session
+        return count if a <= b else -count
+
     # --- internals -------------------------------------------------------------
+
+    def _session_row(self, session: object) -> ScheduleRow | None:
+        """The schedule row of a session; a `ValueError` for a date that is not
+        one, as `exchange_calendars` refuses it."""
+        day = self.day(session)
+        if day.is_unknown:
+            self._unknown(day)
+            return None
+        if not day.is_session:
+            raise ValueError(f'{day.date} is not a session of {self.mic}')
+        return self._row(day)
 
     def _unknown(self, day: Day) -> None:
         """Raise for an unknown day, unless the calendar was asked for a

@@ -25,7 +25,7 @@ from typing import TYPE_CHECKING, Any
 from . import errors
 from ._core import Day, ScheduleRow, Session
 from ._version import __version__
-from .client import Client
+from .client import AsyncClient, Client
 from .errors import (
     ApiError,
     AuthError,
@@ -57,6 +57,7 @@ def __getattr__(name: str) -> Any:
 
 __all__ = [
     'ApiError',
+    'AsyncClient',
     'AuthError',
     'Calendar',
     'Client',

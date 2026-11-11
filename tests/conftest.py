@@ -21,10 +21,12 @@ FIXTURES = Path(__file__).parent / 'fixtures'
 
 
 class FakeSend:
-    """Answers from tests/fixtures/, or from `overrides` (path -> (status, body)).
-    Records every request, so tests can count what reached the network."""
+    """Answers from tests/fixtures/, or from `overrides`: path -> (status,
+    body), or (status, body, headers), or a list of those, answered in turn
+    with the last repeated. Records every request, so tests can count what
+    reached the network."""
 
-    def __init__(self, overrides: Mapping[str, tuple[int, Any]] | None = None):
+    def __init__(self, overrides: Mapping[str, Any] | None = None):
         self.overrides = dict(overrides or {})
         self.requests: list[str] = []
 
@@ -35,8 +37,11 @@ class FakeSend:
         path = '/' + path
         self.requests.append(path)
         if path in self.overrides:
-            status, payload = self.overrides[path]
-            return Response(status, {}, json.dumps(payload).encode())
+            answer = self.overrides[path]
+            if isinstance(answer, list):
+                answer = answer.pop(0) if len(answer) > 1 else answer[0]
+            status, payload, *rest = answer
+            return Response(status, rest[0] if rest else {}, json.dumps(payload).encode())
         if path == '/v1/usage':
             return Response(404, {}, b'{"error":"not_metered","message":"no key store"}')
         file = FIXTURES / name(path)

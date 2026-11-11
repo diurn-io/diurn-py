@@ -7,13 +7,13 @@ interface.
 
 ```sh
 pip install diurn            # the client and diurn.py: standard library only
-pip install 'diurn[pd]'      # the pandas flavor, also diurn.get_calendar
+pip install 'diurn[pd]'      # the Pandas flavor, also diurn.get_calendar
 pip install 'diurn[sf]'      # the StaticFrame flavor
 ```
 
 Nothing imports Pandas, StaticFrame, or NumPy until its flavor is used.
 
-A key is free at <https://diurn.io/signin/>; set `DIURN_API_KEY`.
+An API key is free at <https://diurn.io/signin/>; set `DIURN_API_KEY`.
 
 ```python
 import diurn
@@ -54,9 +54,10 @@ ISO strings with an offset. A naive datetime is refused: it is not an instant.
 ## The interface
 
 `is_session`, `sessions_in_range`, `next_session`, `previous_session`,
-`date_to_session(direction=)`, `sessions_window`, `next_open`, `next_close`,
-`is_open_at_time` and `schedule`, as in `exchange_calendars`, with these
-differences:
+`date_to_session(direction=)`, `sessions_window`, `sessions_distance`,
+`next_open`, `next_close`, `is_open_at_time`, `session_open`,
+`session_close`, `session_break_start`, `session_break_end` and `schedule`,
+as in `exchange_calendars`, with these differences:
 
 - **A session is a day the venue trades,** as the API's `/v1/trading-days`
   counts one: `open`, `early_close`, `open_for_some`, and a `holiday` that
@@ -71,6 +72,12 @@ differences:
   answered by an API rather than precomputed. It adds `kind`, `verification`
   and `reason`; `all_days=True` keeps holidays and unknown days as rows.
 - **`next_session` and `previous_session` take any date**, not only a session.
+- **A session's times are `None` (or `NaT`) where Diurn holds no hours for
+  it**, a day known to trade whose hours are not published; a date that is
+  not a session is a `ValueError`, as in `exchange_calendars`.
+- **`sessions_distance` over a range with an unknown day** raises, or with
+  `on_unknown="missing"` is `None`: a count that skipped the day would be
+  wrong.
 - **Product schedules.** Where a venue keeps several (`calendar.products`),
   `get_calendar(mic, product=...)` picks one; by default the whole venue's
   sessions are used. A product with no hours of its own has none: it is never
@@ -79,7 +86,7 @@ differences:
   the registry's name is `market_name`. **`tz` is the IANA name**, a string,
   where `exchange_calendars` has a `ZoneInfo`.
 
-## The API itself
+## The API
 
 `diurn.Client` has one method per API operation and returns typed models:
 venue search, multi-venue status, exceptions, trading-day arithmetic, usage.
@@ -88,6 +95,22 @@ venue search, multi-venue status, exceptions, trading-day arithmetic, usage.
 client = diurn.Client()  # DIURN_API_KEY, DIURN_API_URL
 client.statuses(['XNYS', 'XLON', 'XTKS'])  # whether each is trading now
 client.usage()  # your plan's meters
+```
+
+**Retries** are off by default. `Client(retries=3)` retries what waiting can
+fix: a rate limit, after the server's `Retry-After`; a `503` or a dropped
+connection, backing off from half a second. A plan's refusal (a MIC cap, a
+date outside the window) is never retried, and a wait longer than `max_wait`
+seconds (60) is raised rather than slept. A calendar retries as its client
+does: `diurn.get_calendar('XNYS', client=diurn.Client(retries=3))`.
+
+**`diurn.AsyncClient`** has the same methods as coroutines, for an event loop.
+It needs nothing beyond the standard library: each call runs the client in a
+worker thread, so calls made together run together.
+
+```python
+client = diurn.AsyncClient()
+statuses = await asyncio.gather(*(client.status(mic) for mic in ('XNYS', 'XLON')))
 ```
 
 ## Errors
