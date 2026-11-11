@@ -107,6 +107,10 @@ def test_every_client_operation_has_an_async_one() -> None:
         method = getattr(AsyncClient, name, None)
         assert method is not None and inspect.iscoroutinefunction(method), name
         assert method.__doc__ == getattr(Client, name).__doc__, name
+        # What help() and an IDE show at runtime: the real parameters, not
+        # *args and **kwargs, under AsyncClient's name.
+        assert inspect.signature(method) == inspect.signature(getattr(Client, name)), name
+        assert method.__qualname__ == f'AsyncClient.{name}', name
 
 
 def test_async_calls_run_together(send: FakeSend) -> None:

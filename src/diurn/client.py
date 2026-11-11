@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import asyncio
 import datetime
+import functools
 from collections.abc import Callable, Coroutine, Sequence
 from typing import Any, Concatenate, Literal
 
@@ -327,16 +328,21 @@ def _instant(value: InstantLike | None) -> datetime.datetime | None:
 def _threaded[**P, R](
     method: Callable[Concatenate[Client, P], R],
 ) -> Callable[Concatenate[AsyncClient, P], Coroutine[Any, Any, R]]:
-    """`Client.method` as a coroutine, run in a worker thread: its signature,
-    name and docstring are kept, so type checkers and `help()` see the same
-    call."""
+    """`Client.method` as a coroutine, run in a worker thread.
 
+    Type checkers see `method`'s parameters through `P`. `functools.wraps`
+    gives the same to everything that reads them at runtime (`help()`,
+    IPython's `?`, completion, Sphinx): it copies the name, docstring and
+    annotations, and sets `__wrapped__`, which `inspect.signature` follows.
+    The return annotation is `method`'s, which is right for an `async def`:
+    it is what awaiting gives. Only `__qualname__` is put back, since this is
+    `AsyncClient`'s method, not `Client`'s."""
+
+    @functools.wraps(method)
     async def run(self: AsyncClient, /, *args: P.args, **kwargs: P.kwargs) -> R:
         return await asyncio.to_thread(method, self.client, *args, **kwargs)
 
-    run.__name__ = method.__name__
     run.__qualname__ = f'AsyncClient.{method.__name__}'
-    run.__doc__ = method.__doc__
     return run
 
 
