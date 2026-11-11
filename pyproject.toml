@@ -66,14 +66,16 @@ files = ["src/diurn", "tools"]
 
 [tool.ruff]
 line-length = 110
+target-version = "py312"
+extend-exclude = ["src/diurn/_generated"]
+
+[tool.ruff.format]
 quote-style = "single"
 indent-style = "space"
 skip-magic-trailing-comma = false
 line-ending = "auto"
 docstring-code-format = true
 docstring-code-line-length = "dynamic"
-target-version = "py312"
-extend-exclude = ["src/diurn/_generated"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "UP", "B", "SIM", "RUF"]

@@ -13,6 +13,7 @@ second resolution; the venue's zone is the calendar's `tz`.
 
 from __future__ import annotations
 
+import dataclasses
 import datetime
 from collections.abc import Sequence
 
@@ -23,7 +24,7 @@ except ImportError as e:  # pragma: no cover - depends on the environment
     raise ImportError("the StaticFrame flavor needs static-frame: pip install 'diurn[sf]'") from e
 
 from . import _core
-from ._core import OnUnknown, ScheduleRow
+from ._core import OnUnknown, ScheduleRow, ScheduleRowUTC
 from .client import Client
 
 __all__ = ["Calendar", "get_calendar"]
@@ -115,10 +116,10 @@ def _date(d: datetime.date | None) -> np.datetime64:
     return np.datetime64("NaT", "D") if d is None else np.datetime64(d, "D")
 
 
-def _index(dates: Sequence[datetime.date]) -> sf.IndexDate:
+def _index(dates: Sequence[datetime.date], name: str | None = None) -> sf.IndexDate:
     array = np.array([np.datetime64(d, "D") for d in dates], dtype="datetime64[D]")
     array.flags.writeable = False
-    return sf.IndexDate(array)
+    return sf.IndexDate(array, name=name)
 
 
 def _utc(t: datetime.datetime | None) -> np.datetime64:
@@ -127,13 +128,36 @@ def _utc(t: datetime.datetime | None) -> np.datetime64:
     return np.datetime64(t.astimezone(datetime.UTC).replace(tzinfo=None), "s")
 
 
+# The schedule's columns, in `ScheduleRowUTC`'s field order, with every dtype
+# given so the constructor need not infer one.
+SCHEDULE_DTYPES: dict[str, object] = {
+    "open": "datetime64[s]",
+    "break_start": "datetime64[s]",
+    "break_end": "datetime64[s]",
+    "close": "datetime64[s]",
+    "kind": str,
+    "verification": str,
+    "reason": object,
+}
+SCHEDULE_COLUMNS = tuple(f.name for f in dataclasses.fields(ScheduleRowUTC))
+
+
 def _schedule(rows: Sequence[ScheduleRow]) -> sf.Frame:
-    columns = {}
-    for col in ("open", "break_start", "break_end", "close"):
-        columns[col] = np.array([_utc(getattr(r, col)) for r in rows], dtype="datetime64[s]")
-    for col in ("kind", "verification"):
-        columns[col] = np.array([getattr(r, col) for r in rows], dtype=str)
-    columns["reason"] = np.array([r.reason for r in rows], dtype=object)
-    return sf.Frame.from_dict(columns, index=_index([r.date for r in rows]), name="schedule").rename(
-        index="session"
+    """One record per row, built in one pass: each row exported to UTC epoch
+    seconds, which `datetime64[s]` reads directly (`None` becomes `NaT`), and
+    the sessions as the index."""
+    if not rows:
+        # `from_records` sets aside the index it is given when there are no
+        # records; an empty schedule keeps its `IndexDate` and dtypes.
+        return sf.Frame.from_dict(
+            {c: np.array([], dtype=d) for c, d in SCHEDULE_DTYPES.items()},  # type: ignore[call-overload]
+            index=_index([], name="session"),
+            name="schedule",
+        )
+    return sf.Frame.from_records(
+        (r.to_utc() for r in rows),
+        index=_index([r.date for r in rows], name="session"),
+        columns=SCHEDULE_COLUMNS,
+        dtypes=SCHEDULE_DTYPES,
+        name="schedule",
     )

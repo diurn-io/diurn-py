@@ -3,8 +3,7 @@
 Exchange calendars and trading hours for the world's markets, from the
 [Diurn API](https://diurn.io), with an
 [`exchange_calendars`](https://github.com/gerrymanoim/exchange_calendars)-style
-interface. Every day says how it is evidenced, and a day Diurn cannot answer
-is never reported as closed.
+interface.
 
 ```sh
 pip install diurn            # the client and diurn.py: standard library only
@@ -12,7 +11,7 @@ pip install 'diurn[pd]'      # the pandas flavor, also diurn.get_calendar
 pip install 'diurn[sf]'      # the StaticFrame flavor
 ```
 
-Nothing imports pandas or NumPy until its flavor is used.
+Nothing imports Pandas, StaticFrame, or NumPy until its flavor is used.
 
 A key is free at <https://diurn.io/signin/>; set `DIURN_API_KEY`.
 
@@ -57,7 +56,7 @@ ISO strings with an offset. A naive datetime is refused: it is not an instant.
 `is_session`, `sessions_in_range`, `next_session`, `previous_session`,
 `date_to_session(direction=)`, `sessions_window`, `next_open`, `next_close`,
 `is_open_at_time` and `schedule`, as in `exchange_calendars`, with these
-differences, made on purpose:
+differences:
 
 - **A session is a day the venue trades,** as the API's `/v1/trading-days`
   counts one: `open`, `early_close`, `open_for_some`, and a `holiday` that
@@ -66,7 +65,7 @@ differences, made on purpose:
   method that depends on such a day raises `diurn.Indeterminate`. Pass
   `on_unknown="missing"` to get `None` (or `NaT`) instead; ranges then leave
   the day out.
-- **Instants keep the venue's zone**, in the pandas and plain flavors. They
+- **Instants keep the venue's zone**, in the Pandas and plain flavors. They
   compare equal to UTC ones.
 - **`schedule(start, end)` is a method over a range**, since the calendar is
   answered by an API rather than precomputed. It adds `kind`, `verification`
@@ -109,11 +108,14 @@ Responses are cached on disk by MIC, range and the dataset the server serves.
 The dataset is checked against the free `/health` endpoint every few minutes,
 so a cached answer is reused exactly as long as it is still the answer, and a
 repeat query makes no metered request. The directory is `DIURN_CACHE_DIR`, or
-`~/.cache/diurn`; `get_calendar(..., cache=False)` turns it off.
+the platform's own cache directory: `~/Library/Caches/diurn` on macOS,
+`%LOCALAPPDATA%\diurn\Cache` on Windows, and `$XDG_CACHE_HOME/diurn` or
+`~/.cache/diurn` elsewhere (`XDG_CACHE_HOME` is honoured on any platform where
+it is set). `get_calendar(..., cache=False)` turns it off.
 
 ## Development
 
-Python 3.12 or later; nothing beyond the standard library to build.
+Python 3.12 or later; nothing beyond the standard library is required to build.
 
 ```sh
 python -m venv .venv && .venv/bin/pip install -e '.[dev]'
@@ -121,10 +123,6 @@ python -m venv .venv && .venv/bin/pip install -e '.[dev]'
 .venv/bin/python -m mypy
 .venv/bin/python -m ruff check .
 ```
-
-The version is in one place, `src/diurn/_version.py`. Publishing a GitHub
-release runs CI, builds and checks the distributions (`twine check`, both
-licenses in the wheel, an import without pandas) and uploads them to PyPI.
 
 The wire layer (`src/diurn/_generated/`) is generated from the API's OpenAPI
 document and committed. To refresh it, from a checkout of `diurn-platform`:

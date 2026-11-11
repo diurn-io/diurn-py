@@ -7,8 +7,10 @@ once per `check_every` seconds; when it changes, every answer from the old one
 is dropped. This needs no changes feed: the feed (SPEC-api-additions §7) would
 only let a client keep the answers a new dataset did not change.
 
-The directory is `DIURN_CACHE_DIR`, else `$XDG_CACHE_HOME/diurn`, else
-`~/.cache/diurn`. Pass `cache=False` to a calendar to bypass it.
+The directory is `DIURN_CACHE_DIR`; else `$XDG_CACHE_HOME/diurn`, on any
+platform, when that is set; else the platform's own place for caches:
+`~/Library/Caches/diurn` on macOS, `%LOCALAPPDATA%\\diurn\\Cache` on Windows,
+and `~/.cache/diurn` elsewhere. Pass `cache=False` to a calendar to bypass it.
 """
 
 from __future__ import annotations
@@ -17,9 +19,10 @@ import hashlib
 import json
 import os
 import shutil
+import sys
 import tempfile
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import Any
 
@@ -28,12 +31,34 @@ from . import errors
 __all__ = ["DiskCache", "default_dir"]
 
 
-def default_dir() -> Path:
-    explicit = os.environ.get("DIURN_CACHE_DIR")
+def default_dir(
+    platform: str | None = None,
+    environ: Mapping[str, str] | None = None,
+    home: Path | None = None,
+) -> Path:
+    """Where the cache lives. The arguments default to this process's
+    platform, environment and home, and exist so every platform's answer can
+    be tested on one."""
+    platform = sys.platform if platform is None else platform
+    env = os.environ if environ is None else environ
+    home = Path.home() if home is None else home
+    explicit = env.get("DIURN_CACHE_DIR")
     if explicit:
         return Path(explicit)
-    base = os.environ.get("XDG_CACHE_HOME") or str(Path.home() / ".cache")
-    return Path(base) / "diurn"
+    # Set by the user, so honoured wherever it is set, as uv and others do.
+    xdg = env.get("XDG_CACHE_HOME")
+    if xdg:
+        return Path(xdg) / "diurn"
+    if platform == "darwin":
+        # Where macOS expects caches: skipped by Time Machine, and cleared by
+        # the tools that reclaim space.
+        return home / "Library" / "Caches" / "diurn"
+    if platform == "win32":
+        # Local, not roaming: a cache should not follow a profile around.
+        local = env.get("LOCALAPPDATA")
+        base = Path(local) if local else home / "AppData" / "Local"
+        return base / "diurn" / "Cache"
+    return home / ".cache" / "diurn"
 
 
 class DiskCache:

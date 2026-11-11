@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
+import pytest
 import static_frame as sf
 
 import diurn
@@ -53,3 +54,65 @@ def test_static_frame_flavor(client: Client) -> None:
     assert frame.loc[np.datetime64("2026-11-27"), "close"] == np.datetime64("2026-11-27T18:00:00")
     assert frame.loc[np.datetime64("2026-11-27"), "kind"] == "early_close"
     assert x.next_close("2026-11-27T15:00:00Z") == np.datetime64("2026-11-27T18:00:00")
+
+
+# The three instants in UTC seconds, as the StaticFrame flavor gives them.
+INSTANTS = ("open", "break_start", "break_end", "close")
+
+
+def _as_static_frame(frame: pd.DataFrame) -> sf.Frame:
+    """The pandas schedule, carried to the StaticFrame flavor's conventions:
+    instants from the venue's zone to naive UTC at second resolution, and the
+    sessions as an `IndexDate`. What is left to differ is the data."""
+    norm = frame.copy()
+    for col in INSTANTS:
+        norm[col] = norm[col].dt.tz_convert("UTC").dt.tz_localize(None).astype("datetime64[s]")
+    return sf.Frame.from_pandas(norm, index_constructor=sf.IndexDate, name="schedule").rename(
+        index="session"
+    )
+
+
+@pytest.mark.parametrize("mic", ["XNYS", "XTKS", "XHKG", "XCEC", "XNSE"])
+@pytest.mark.parametrize("all_days", [False, True])
+def test_the_pandas_and_static_frame_schedules_agree(client: Client, mic: str, all_days: bool) -> None:
+    # A year of each recorded venue: holidays (with all_days, rows of NaT),
+    # lunch breaks, early closes, product sessions and Muhurat.
+    p = diurn.get_calendar(mic, client=client, cache=False).schedule(
+        "2026-01-01", "2026-12-31", all_days=all_days
+    )
+    s = dsf.get_calendar(mic, client=client, cache=False).schedule(
+        "2026-01-01", "2026-12-31", all_days=all_days
+    )
+    converted = _as_static_frame(p)
+    # Not the dtypes: the string columns differ only in Unicode width, and the
+    # column labels in object against str. The instants' dtypes are checked
+    # directly instead, since they are the ones that mean something.
+    assert converted.equals(s, compare_dtype=False, compare_class=True, compare_name=True)
+    for col in INSTANTS:
+        assert converted[col].dtype == s[col].dtype == np.dtype("datetime64[s]")
+
+    # And the comparison can fail: one close a second late is a difference.
+    late = p.copy()
+    first = late["close"].first_valid_index()
+    late.loc[first, "close"] = late.loc[first, "close"] + pd.Timedelta(seconds=1)
+    assert not _as_static_frame(late).equals(s, compare_dtype=False)
+
+
+def test_the_flavors_agree_on_sessions(client: Client) -> None:
+    p = diurn.get_calendar("XNSE", client=client, cache=False).sessions_in_range("2026-01-01", "2026-12-31")
+    s = dsf.get_calendar("XNSE", client=client, cache=False).sessions_in_range("2026-01-01", "2026-12-31")
+    assert sf.IndexDate(p.values.astype("datetime64[D]")).equals(s)
+
+
+def test_the_static_frame_dtypes_follow_the_record() -> None:
+    # `from_records` takes the columns from ScheduleRowUTC's fields and the
+    # dtypes by name: the two must name the same columns, in the same order.
+    assert tuple(dsf.SCHEDULE_DTYPES) == dsf.SCHEDULE_COLUMNS
+
+
+def test_an_empty_static_frame_schedule_keeps_its_shape(client: Client) -> None:
+    # Culture Day alone: no sessions, so no records, and still every column.
+    frame = dsf.get_calendar("XTKS", client=client, cache=False).schedule("2026-11-03", "2026-11-03")
+    assert frame.shape == (0, 7)
+    assert frame.index.name == "session" and frame.name == "schedule"
+    assert frame["open"].dtype == np.dtype("datetime64[s]")

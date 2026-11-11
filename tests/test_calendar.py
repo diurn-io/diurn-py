@@ -241,3 +241,40 @@ def test_the_plan_window_is_asked_again_the_next_day(send: FakeSend) -> None:
     x._window_day = D(2000, 1, 1)  # as if the calendar had been open since then
     x.is_session("2026-11-24")
     assert send.requests.count("/v1/usage") == 2
+
+
+def test_a_schedule_row_exports_to_utc_seconds(client: Client) -> None:
+    (row,) = cal(client).schedule("2026-11-27", "2026-11-27")  # an early close
+    utc = row.to_utc()
+    assert row.close is not None and utc.close == int(row.close.timestamp())
+    assert datetime.datetime.fromtimestamp(utc.close, datetime.UTC).isoformat() == "2026-11-27T18:00:00+00:00"
+    assert utc.break_start is None and utc.kind == "early_close"
+
+
+HOME = Path("/home/someone")
+
+
+@pytest.mark.parametrize(
+    ("platform", "environ", "expected"),
+    [
+        ("linux", {}, HOME / ".cache" / "diurn"),
+        ("darwin", {}, HOME / "Library" / "Caches" / "diurn"),
+        ("win32", {"LOCALAPPDATA": "C:/Users/someone/AppData/Local"},
+         Path("C:/Users/someone/AppData/Local") / "diurn" / "Cache"),
+        # Without LOCALAPPDATA, where it would have pointed.
+        ("win32", {}, HOME / "AppData" / "Local" / "diurn" / "Cache"),
+        # XDG_CACHE_HOME, set by the user, wins on any platform...
+        ("linux", {"XDG_CACHE_HOME": "/xdg"}, Path("/xdg/diurn")),
+        ("darwin", {"XDG_CACHE_HOME": "/xdg"}, Path("/xdg/diurn")),
+        # ...and DIURN_CACHE_DIR over everything.
+        ("darwin", {"DIURN_CACHE_DIR": "/mine", "XDG_CACHE_HOME": "/xdg"}, Path("/mine")),
+        # Set but empty is not set.
+        ("darwin", {"DIURN_CACHE_DIR": "", "XDG_CACHE_HOME": ""}, HOME / "Library" / "Caches" / "diurn"),
+    ],
+)
+def test_the_cache_lives_where_each_platform_keeps_caches(
+    platform: str, environ: dict[str, str], expected: Path
+) -> None:
+    from diurn._cache import default_dir
+
+    assert default_dir(platform, environ, HOME) == expected

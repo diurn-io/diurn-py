@@ -1,0 +1,19 @@
+{
+ "country": "US",
+ "mic": "XCEC",
+ "name": "COMMODITIES EXCHANGE CENTER",
+ "operating_mic": "XNYM",
+ "products": [
+  "Equity Index",
+  "Interest Rate",
+  "Energy and Metals",
+  "Grains and Oilseeds",
+  "Livestock"
+ ],
+ "resolution": {
+  "kind": "operating_mic",
+  "via": "XNYM"
+ },
+ "status": "ACTIVE",
+ "timezone": "America/Chicago"
+}

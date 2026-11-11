@@ -77,10 +77,22 @@ def _is_datetime64(value: object) -> bool:
     return dtype is not None and getattr(dtype, "kind", "") == "M"
 
 
+# The units `.item()` returns as an `int` rather than a `date` or `datetime`:
+# finer than Python's microsecond.
+_FINER_THAN_US = frozenset({"ns", "ps", "fs", "as"})
+
+
 def _datetime64_item(value: object) -> object:
-    """A numpy datetime64 as `date` or `datetime`. Nanosecond units come back
-    from `.item()` as an `int`, so they are taken through microseconds."""
-    unit = str(getattr(value, "dtype", ""))
-    if unit.endswith("[D]") or unit.endswith("[M]") or unit.endswith("[Y]"):
-        return value.item()  # type: ignore[attr-defined]
-    return value.astype("datetime64[us]").item()  # type: ignore[attr-defined]
+    """A numpy datetime64 as `date` (units of a day or longer) or `datetime`.
+
+    NumPy is imported here, not at the top: this runs only when a caller has
+    handed over a datetime64, so NumPy is already loaded and the import costs
+    a lookup, while `import diurn` stays free of it."""
+    import numpy as np
+
+    if np.isnat(value):  # type: ignore[call-overload]
+        raise ValueError("NaT is not a date or an instant")
+    unit, _ = np.datetime_data(value.dtype)  # type: ignore[attr-defined]
+    if unit in _FINER_THAN_US:
+        value = value.astype("datetime64[us]")  # type: ignore[attr-defined]
+    return value.item()  # type: ignore[attr-defined]

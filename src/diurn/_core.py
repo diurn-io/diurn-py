@@ -23,7 +23,7 @@ from ._cache import DiskCache
 from ._instant import parse_instant, to_date, to_instant
 from .client import Client
 
-__all__ = ["TRADING_KINDS", "Calendar", "Day", "OnUnknown", "ScheduleRow", "Session"]
+__all__ = ["TRADING_KINDS", "Calendar", "Day", "OnUnknown", "ScheduleRow", "ScheduleRowUTC", "Session"]
 
 TRADING_KINDS = frozenset({"open", "early_close", "open_for_some"})
 OnUnknown = Literal["raise", "missing"]
@@ -80,6 +80,44 @@ class ScheduleRow:
     kind: str
     verification: str
     reason: str | None
+
+    def to_utc(self) -> ScheduleRowUTC:
+        """The row with its instants in UTC, as whole seconds since the Unix
+        epoch, for a frame type that has no time zones (NumPy's `datetime64`,
+        so StaticFrame)."""
+        return ScheduleRowUTC(
+            _epoch_seconds(self.open),
+            _epoch_seconds(self.break_start),
+            _epoch_seconds(self.break_end),
+            _epoch_seconds(self.close),
+            self.kind,
+            self.verification,
+            self.reason,
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class ScheduleRowUTC:
+    """A `ScheduleRow` with its instants in UTC, and without its date: one
+    record of a frame indexed by session. Its fields, in order, are the
+    frame's columns.
+
+    Instants are whole seconds since the Unix epoch, not `datetime`s: that is
+    what a `datetime64[s]` holds, so NumPy takes them as they are rather than
+    converting an object per value (a third faster for a schedule). Sessions
+    are quoted to the minute, so nothing is lost."""
+
+    open: int | None
+    break_start: int | None
+    break_end: int | None
+    close: int | None
+    kind: str
+    verification: str
+    reason: str | None
+
+
+def _epoch_seconds(t: datetime.datetime | None) -> int | None:
+    return None if t is None else int(t.timestamp())
 
 
 class Calendar:

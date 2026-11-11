@@ -143,3 +143,29 @@ def test_one_version_everywhere() -> None:
 
     assert diurn.__version__ == version("diurn")
     assert f"diurn-py/{diurn.__version__}" == USER_AGENT
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        (np.datetime64("2026-11-27", "D"), datetime.date(2026, 11, 27)),
+        (np.datetime64("2026-11-27", "W"), datetime.date(2026, 11, 26)),  # weeks start on Thursdays
+        (np.datetime64("2026-11", "M"), datetime.date(2026, 11, 1)),
+        (np.datetime64("2026-11-27T13:30", "m"), datetime.date(2026, 11, 27)),
+        (np.datetime64("2026-11-27T13:30:00.123", "ms"), datetime.date(2026, 11, 27)),
+        (np.datetime64("2026-11-27T13:30:00.123456789", "ns"), datetime.date(2026, 11, 27)),
+        (np.datetime64("2026-11-27", "2D"), datetime.date(2026, 11, 27)),  # a multiple of a unit
+        (np.datetime64("2026-11-28", "2D"), datetime.date(2026, 11, 27)),  # two-day steps from 1970
+    ],
+)
+def test_dates_from_every_datetime64_unit(value: np.datetime64, expected: datetime.date) -> None:
+    assert to_date(value) == expected
+
+
+def test_instants_from_fine_datetime64_units() -> None:
+    expected = datetime.datetime(2026, 11, 27, 13, 30, 0, 123456, tzinfo=datetime.UTC)
+    assert to_instant(np.datetime64("2026-11-27T13:30:00.123456789", "ns")) == expected
+    with pytest.raises(ValueError, match="NaT"):
+        to_date(np.datetime64("NaT", "D"))
+    with pytest.raises(ValueError, match="NaT"):
+        to_instant(np.datetime64("NaT", "ns"))
