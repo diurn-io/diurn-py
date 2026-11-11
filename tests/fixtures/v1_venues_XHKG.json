@@ -1,0 +1,13 @@
+{
+ "country": "HK",
+ "mic": "XHKG",
+ "name": "HONG KONG EXCHANGES AND CLEARING LTD",
+ "operating_mic": "XHKG",
+ "products": [],
+ "resolution": {
+  "kind": "own",
+  "via": "XHKG"
+ },
+ "status": "ACTIVE",
+ "timezone": "Asia/Hong_Kong"
+}

@@ -1,0 +1,52 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "diurn"
+version = "0.1.0"
+description = "Exchange calendars and trading hours from the Diurn API, with an exchange_calendars-style interface."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Christopher Ariza" }]
+maintainers = [{ name = "Christopher Ariza" }]
+requires-python = ">=3.11"
+dependencies = ["pandas>=2.0"]
+keywords = ["exchange calendar", "trading hours", "market holidays", "MIC", "ISO 10383"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Financial and Insurance Industry",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: 3.15",
+    "Topic :: Office/Business :: Financial :: Investment",
+    "Typing :: Typed",
+]
+
+[project.optional-dependencies]
+sf = ["static-frame>=2.0"]
+dev = ["pytest>=8", "mypy>=1.10", "pandas-stubs", "static-frame>=2.0"]
+
+[project.urls]
+Homepage = "https://diurn.io"
+Documentation = "https://diurn.io/docs/"
+Repository = "https://github.com/diurn-io/diurn-py"
+Issues = "https://github.com/diurn-io/diurn-py/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+diurn = ["py.typed"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+files = ["src/diurn", "tools"]

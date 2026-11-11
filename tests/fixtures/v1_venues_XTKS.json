@@ -1,0 +1,13 @@
+{
+ "country": "JP",
+ "mic": "XTKS",
+ "name": "TOKYO STOCK EXCHANGE",
+ "operating_mic": "XJPX",
+ "products": [],
+ "resolution": {
+  "kind": "operating_mic",
+  "via": "XJPX"
+ },
+ "status": "ACTIVE",
+ "timezone": "Asia/Tokyo"
+}
