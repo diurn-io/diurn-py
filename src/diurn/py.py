@@ -15,14 +15,14 @@ import datetime
 from ._core import Calendar, Day, OnUnknown, ScheduleRow, Session
 from .client import Client
 
-__all__ = ["Calendar", "Day", "ScheduleRow", "Session", "get_calendar"]
+__all__ = ['Calendar', 'Day', 'ScheduleRow', 'Session', 'get_calendar']
 
 
 def get_calendar(
     mic: str,
     *,
     client: Client | None = None,
-    on_unknown: OnUnknown = "raise",
+    on_unknown: OnUnknown = 'raise',
     product: str | None = None,
     cache: bool = True,
     as_of: datetime.datetime | str | None = None,

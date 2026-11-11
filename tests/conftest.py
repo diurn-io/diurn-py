@@ -11,13 +11,13 @@ from typing import Any
 
 import pytest
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "tools"))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / 'tools'))
 from record_fixtures import name
 
 from diurn._transport import Response
 from diurn.client import Client
 
-FIXTURES = Path(__file__).parent / "fixtures"
+FIXTURES = Path(__file__).parent / 'fixtures'
 
 
 class FakeSend:
@@ -31,13 +31,13 @@ class FakeSend:
     def __call__(
         self, method: str, url: str, headers: Mapping[str, str], body: bytes | None, timeout: float
     ) -> Response:
-        path = url.split("://", 1)[1].split("/", 1)[1]
-        path = "/" + path
+        path = url.split('://', 1)[1].split('/', 1)[1]
+        path = '/' + path
         self.requests.append(path)
         if path in self.overrides:
             status, payload = self.overrides[path]
             return Response(status, {}, json.dumps(payload).encode())
-        if path == "/v1/usage":
+        if path == '/v1/usage':
             return Response(404, {}, b'{"error":"not_metered","message":"no key store"}')
         file = FIXTURES / name(path)
         if file.exists():
@@ -45,22 +45,22 @@ class FakeSend:
         part = self.range_of_a_recorded_year(path)
         if part is not None:
             return Response(200, {}, json.dumps(part).encode())
-        return Response(404, {}, json.dumps({"error": "not_found", "message": path}).encode())
+        return Response(404, {}, json.dumps({'error': 'not_found', 'message': path}).encode())
 
     @staticmethod
     def range_of_a_recorded_year(path: str) -> Any:
         """A sessions range inside one recorded year, cut from that year."""
-        if "/sessions?" not in path:
+        if '/sessions?' not in path:
             return None
-        prefix, query = path.split("?", 1)
-        params = dict(p.split("=", 1) for p in query.split("&"))
-        start, end = params.get("from", ""), params.get("to", "")
+        prefix, query = path.split('?', 1)
+        params = dict(p.split('=', 1) for p in query.split('&'))
+        start, end = params.get('from', ''), params.get('to', '')
         year = start[:4]
-        file = FIXTURES / name(f"{prefix}?from={year}-01-01&to={year}-12-31")
+        file = FIXTURES / name(f'{prefix}?from={year}-01-01&to={year}-12-31')
         if not file.exists() or end[:4] != year:
             return None
         whole = json.loads(file.read_text())
-        return {**whole, "days": [d for d in whole["days"] if start <= d["date"] <= end]}
+        return {**whole, 'days': [d for d in whole['days'] if start <= d['date'] <= end]}
 
 
 @pytest.fixture
@@ -70,4 +70,4 @@ def send() -> FakeSend:
 
 @pytest.fixture
 def client(send: FakeSend) -> Client:
-    return Client(api_key="diurn_key_test", base_url="https://api.test", send=send)
+    return Client(api_key='diurn_key_test', base_url='https://api.test', send=send)

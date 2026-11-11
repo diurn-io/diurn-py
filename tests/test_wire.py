@@ -22,90 +22,90 @@ ROOT = Path(__file__).resolve().parent.parent
 
 
 def test_generated_models_are_current() -> None:
-    r = subprocess.run([sys.executable, "tools/generate.py", "--check"], cwd=ROOT)
-    assert r.returncode == 0, "run python tools/generate.py"
+    r = subprocess.run([sys.executable, 'tools/generate.py', '--check'], cwd=ROOT)
+    assert r.returncode == 0, 'run python tools/generate.py'
 
 
 def test_instants_keep_their_iana_zone() -> None:
-    t = parse_instant("2026-11-27T13:00:00-05:00[America/New_York]")
-    assert str(t.tzinfo) == "America/New_York"
+    t = parse_instant('2026-11-27T13:00:00-05:00[America/New_York]')
+    assert str(t.tzinfo) == 'America/New_York'
     assert t.utcoffset() == datetime.timedelta(hours=-5)
-    assert parse_instant("2026-11-27T18:00:00+00:00") == t
+    assert parse_instant('2026-11-27T18:00:00+00:00') == t
 
 
 def test_dates_from_anything_reasonable() -> None:
     expected = datetime.date(2026, 11, 27)
     for value in (
         expected,
-        "2026-11-27",
-        pd.Timestamp("2026-11-27"),
-        np.datetime64("2026-11-27"),
-        np.datetime64("2026-11-27T00:00:00.000000000"),
+        '2026-11-27',
+        pd.Timestamp('2026-11-27'),
+        np.datetime64('2026-11-27'),
+        np.datetime64('2026-11-27T00:00:00.000000000'),
     ):
         assert to_date(value) == expected, value
     with pytest.raises(ValueError):
-        to_instant("2026-11-27T12:00:00")  # no zone
+        to_instant('2026-11-27T12:00:00')  # no zone
 
 
 def test_typed_models_from_a_real_response(client: Client) -> None:
-    days = client.sessions("XNYS", "2026-01-01", "2026-12-31").days
+    days = client.sessions('XNYS', '2026-01-01', '2026-12-31').days
     thanksgiving = next(d for d in days if d.date == datetime.date(2026, 11, 26))
-    assert thanksgiving.kind == "holiday" and thanksgiving.sessions == ()
-    assert thanksgiving.verification == "verified"
-    venue = client.venue("xnys")
-    assert venue.mic == "XNYS" and venue.timezone == "America/New_York"
+    assert thanksgiving.kind == 'holiday' and thanksgiving.sessions == ()
+    assert thanksgiving.verification == 'verified'
+    venue = client.venue('xnys')
+    assert venue.mic == 'XNYS' and venue.timezone == 'America/New_York'
 
 
 def test_errors_carry_their_numbers(send: FakeSend) -> None:
-    send.overrides["/v1/venues/XNYS/status?at=2026-11-27T15%3A00%3A00%2B00%3A00"] = (
+    send.overrides['/v1/venues/XNYS/status?at=2026-11-27T15%3A00%3A00%2B00%3A00'] = (
         429,
         {
-            "error": "mic_cap_exceeded",
-            "message": "XNYS would be unique MIC number 3",
-            "limit": {"kind": "mics_day", "used": 2, "max": 2},
-            "mics_in_use": ["XLON", "XTKS"],
-            "resets_at": "2026-11-28T09:00:00Z",
-            "upgrade": "https://diurn.io/pricing",
+            'error': 'mic_cap_exceeded',
+            'message': 'XNYS would be unique MIC number 3',
+            'limit': {'kind': 'mics_day', 'used': 2, 'max': 2},
+            'mics_in_use': ['XLON', 'XTKS'],
+            'resets_at': '2026-11-28T09:00:00Z',
+            'upgrade': 'https://diurn.io/pricing',
         },
     )
-    client = Client(api_key="k", base_url="https://api.test", send=send)
+    client = Client(api_key='k', base_url='https://api.test', send=send)
     with pytest.raises(diurn.MicCapExceeded) as e:
-        client.status("XNYS", "2026-11-27T15:00:00Z")
-    assert e.value.mics_in_use == ["XLON", "XTKS"]
-    assert e.value.limit == {"kind": "mics_day", "used": 2, "max": 2}
-    assert e.value.resets_at == "2026-11-28T09:00:00Z"
+        client.status('XNYS', '2026-11-27T15:00:00Z')
+    assert e.value.mics_in_use == ['XLON', 'XTKS']
+    assert e.value.limit == {'kind': 'mics_day', 'used': 2, 'max': 2}
+    assert e.value.resets_at == '2026-11-28T09:00:00Z'
 
 
 def test_error_classes_by_tag() -> None:
-    assert isinstance(errors.from_response(401, {"error": "needs_key", "message": ""}), diurn.AuthError)
+    assert isinstance(errors.from_response(401, {'error': 'needs_key', 'message': ''}), diurn.AuthError)
     out = errors.from_response(
-        403, {"error": "out_of_window", "message": "", "allowed": {"from": "2026-01-01", "to": None}}
+        403, {'error': 'out_of_window', 'message': '', 'allowed': {'from': '2026-01-01', 'to': None}}
     )
     assert isinstance(out, diurn.OutOfWindow) and out.allowed_from == datetime.date(2026, 1, 1)
     assert out.allowed_to is None
-    limited = errors.from_response(429, {"error": "rate_limited", "message": ""}, retry_after=2.0)
+    limited = errors.from_response(429, {'error': 'rate_limited', 'message': ''}, retry_after=2.0)
     assert isinstance(limited, diurn.RateLimited) and limited.retry_after == 2.0
-    assert isinstance(errors.from_response(404, {"error": "unknown_mic", "message": ""}), diurn.UnknownVenue)
+    assert isinstance(errors.from_response(404, {'error': 'unknown_mic', 'message': ''}), diurn.UnknownVenue)
 
 
 def test_a_mic_is_checked_before_any_request(client: Client) -> None:
     with pytest.raises(ValueError):
-        client.venue("NYSE!")
+        client.venue('NYSE!')
 
 
 def test_an_indeterminate_answer_from_the_api_is_an_indeterminate(send: FakeSend) -> None:
-    path = "/v1/venues/XJPX/trading-days/next?from=2099-12-29&n=3&inclusive=false&on_unknown=error"
+    path = '/v1/venues/XJPX/trading-days/next?from=2099-12-29&n=3&inclusive=false&on_unknown=error'
     send.overrides[path] = (
         422,
         {
-            "error": "indeterminate",
-            "message": "2100-01-01 is beyond what can be answered",
-            "date": "2100-01-01",
+            'error': 'indeterminate',
+            'message': '2100-01-01 is beyond what can be answered',
+            'date': '2100-01-01',
         },
     )
-    client = Client(api_key="k", base_url="https://api.test", send=send)
+    client = Client(api_key='k', base_url='https://api.test', send=send)
     with pytest.raises(diurn.Indeterminate) as e:
-        client.next_trading_day("XJPX", "2099-12-29", 3)
+        client.next_trading_day('XJPX', '2099-12-29', 3)
     assert isinstance(e.value, diurn.ApiError) and e.value.status == 422
     assert e.value.date == datetime.date(2100, 1, 1)
 
@@ -114,25 +114,25 @@ def test_an_unnamed_plan_refusal_still_carries_its_numbers() -> None:
     out = errors.from_response(
         429,
         {
-            "error": "venue_days_exceeded",
-            "message": "",
-            "limit": {"kind": "venue_days"},
-            "resets_at": "2026-12-01T00:00:00Z",
+            'error': 'venue_days_exceeded',
+            'message': '',
+            'limit': {'kind': 'venue_days'},
+            'resets_at': '2026-12-01T00:00:00Z',
         },
     )
     assert isinstance(out, diurn.OverLimit)
-    assert out.limit == {"kind": "venue_days"} and out.resets_at == "2026-12-01T00:00:00Z"
+    assert out.limit == {'kind': 'venue_days'} and out.resets_at == '2026-12-01T00:00:00Z'
 
 
 def test_importing_diurn_does_not_import_pandas() -> None:
     # pandas is the `pd` extra: only the pandas flavor loads it.
     code = (
-        "import sys, diurn, diurn.py;"
+        'import sys, diurn, diurn.py;'
         "assert 'pandas' not in sys.modules and 'numpy' not in sys.modules;"
-        "diurn.get_calendar;"
+        'diurn.get_calendar;'
         "assert 'pandas' in sys.modules"
     )
-    r = subprocess.run([sys.executable, "-c", code], cwd=ROOT)
+    r = subprocess.run([sys.executable, '-c', code], cwd=ROOT)
     assert r.returncode == 0
 
 
@@ -141,21 +141,21 @@ def test_one_version_everywhere() -> None:
 
     from diurn._transport import USER_AGENT
 
-    assert diurn.__version__ == version("diurn")
-    assert f"diurn-py/{diurn.__version__}" == USER_AGENT
+    assert diurn.__version__ == version('diurn')
+    assert f'diurn-py/{diurn.__version__}' == USER_AGENT
 
 
 @pytest.mark.parametrize(
-    ("value", "expected"),
+    ('value', 'expected'),
     [
-        (np.datetime64("2026-11-27", "D"), datetime.date(2026, 11, 27)),
-        (np.datetime64("2026-11-27", "W"), datetime.date(2026, 11, 26)),  # weeks start on Thursdays
-        (np.datetime64("2026-11", "M"), datetime.date(2026, 11, 1)),
-        (np.datetime64("2026-11-27T13:30", "m"), datetime.date(2026, 11, 27)),
-        (np.datetime64("2026-11-27T13:30:00.123", "ms"), datetime.date(2026, 11, 27)),
-        (np.datetime64("2026-11-27T13:30:00.123456789", "ns"), datetime.date(2026, 11, 27)),
-        (np.datetime64("2026-11-27", "2D"), datetime.date(2026, 11, 27)),  # a multiple of a unit
-        (np.datetime64("2026-11-28", "2D"), datetime.date(2026, 11, 27)),  # two-day steps from 1970
+        (np.datetime64('2026-11-27', 'D'), datetime.date(2026, 11, 27)),
+        (np.datetime64('2026-11-27', 'W'), datetime.date(2026, 11, 26)),  # weeks start on Thursdays
+        (np.datetime64('2026-11', 'M'), datetime.date(2026, 11, 1)),
+        (np.datetime64('2026-11-27T13:30', 'm'), datetime.date(2026, 11, 27)),
+        (np.datetime64('2026-11-27T13:30:00.123', 'ms'), datetime.date(2026, 11, 27)),
+        (np.datetime64('2026-11-27T13:30:00.123456789', 'ns'), datetime.date(2026, 11, 27)),
+        (np.datetime64('2026-11-27', '2D'), datetime.date(2026, 11, 27)),  # a multiple of a unit
+        (np.datetime64('2026-11-28', '2D'), datetime.date(2026, 11, 27)),  # two-day steps from 1970
     ],
 )
 def test_dates_from_every_datetime64_unit(value: np.datetime64, expected: datetime.date) -> None:
@@ -164,8 +164,8 @@ def test_dates_from_every_datetime64_unit(value: np.datetime64, expected: dateti
 
 def test_instants_from_fine_datetime64_units() -> None:
     expected = datetime.datetime(2026, 11, 27, 13, 30, 0, 123456, tzinfo=datetime.UTC)
-    assert to_instant(np.datetime64("2026-11-27T13:30:00.123456789", "ns")) == expected
-    with pytest.raises(ValueError, match="NaT"):
-        to_date(np.datetime64("NaT", "D"))
-    with pytest.raises(ValueError, match="NaT"):
-        to_instant(np.datetime64("NaT", "ns"))
+    assert to_instant(np.datetime64('2026-11-27T13:30:00.123456789', 'ns')) == expected
+    with pytest.raises(ValueError, match='NaT'):
+        to_date(np.datetime64('NaT', 'D'))
+    with pytest.raises(ValueError, match='NaT'):
+        to_instant(np.datetime64('NaT', 'ns'))

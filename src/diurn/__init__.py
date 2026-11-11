@@ -44,7 +44,7 @@ if TYPE_CHECKING:
     from .pd import Calendar, get_calendar
 
 # The pandas flavor's names, loaded when first asked for (PEP 562).
-_PANDAS = ("Calendar", "get_calendar")
+_PANDAS = ('Calendar', 'get_calendar')
 
 
 def __getattr__(name: str) -> Any:
@@ -56,23 +56,23 @@ def __getattr__(name: str) -> Any:
 
 
 __all__ = [
-    "ApiError",
-    "AuthError",
-    "Calendar",
-    "Client",
-    "Day",
-    "DiurnError",
-    "Indeterminate",
-    "MicCapExceeded",
-    "NotInPlan",
-    "OutOfWindow",
-    "OverLimit",
-    "RateLimited",
-    "ScheduleRow",
-    "Session",
-    "TransportError",
-    "UnknownVenue",
-    "__version__",
-    "errors",
-    "get_calendar",
+    'ApiError',
+    'AuthError',
+    'Calendar',
+    'Client',
+    'Day',
+    'DiurnError',
+    'Indeterminate',
+    'MicCapExceeded',
+    'NotInPlan',
+    'OutOfWindow',
+    'OverLimit',
+    'RateLimited',
+    'ScheduleRow',
+    'Session',
+    'TransportError',
+    'UnknownVenue',
+    '__version__',
+    'errors',
+    'get_calendar',
 ]

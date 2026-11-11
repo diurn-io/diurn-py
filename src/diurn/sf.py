@@ -27,9 +27,9 @@ from . import _core
 from ._core import OnUnknown, ScheduleRow, ScheduleRowUTC
 from .client import Client
 
-__all__ = ["Calendar", "get_calendar"]
+__all__ = ['Calendar', 'get_calendar']
 
-NAT = np.datetime64("NaT", "s")
+NAT = np.datetime64('NaT', 's')
 
 
 class Calendar:
@@ -40,7 +40,7 @@ class Calendar:
         self.core = core
 
     def __repr__(self) -> str:
-        return repr(self.core).replace("<Calendar", "<diurn.sf.Calendar", 1)
+        return repr(self.core).replace('<Calendar', '<diurn.sf.Calendar', 1)
 
     @property
     def mic(self) -> str:
@@ -76,7 +76,7 @@ class Calendar:
     def previous_session(self, date: object) -> np.datetime64:
         return _date(self.core.previous_session(date))
 
-    def date_to_session(self, date: object, direction: str = "none") -> np.datetime64:
+    def date_to_session(self, date: object, direction: str = 'none') -> np.datetime64:
         return _date(self.core.date_to_session(date, direction))  # type: ignore[arg-type]
 
     def sessions_window(self, session: object, count: int) -> sf.IndexDate:
@@ -102,7 +102,7 @@ def get_calendar(
     mic: str,
     *,
     client: Client | None = None,
-    on_unknown: OnUnknown = "raise",
+    on_unknown: OnUnknown = 'raise',
     product: str | None = None,
     cache: bool = True,
     as_of: datetime.datetime | str | None = None,
@@ -113,11 +113,11 @@ def get_calendar(
 
 
 def _date(d: datetime.date | None) -> np.datetime64:
-    return np.datetime64("NaT", "D") if d is None else np.datetime64(d, "D")
+    return np.datetime64('NaT', 'D') if d is None else np.datetime64(d, 'D')
 
 
 def _index(dates: Sequence[datetime.date], name: str | None = None) -> sf.IndexDate:
-    array = np.array([np.datetime64(d, "D") for d in dates], dtype="datetime64[D]")
+    array = np.array([np.datetime64(d, 'D') for d in dates], dtype='datetime64[D]')
     array.flags.writeable = False
     return sf.IndexDate(array, name=name)
 
@@ -125,19 +125,19 @@ def _index(dates: Sequence[datetime.date], name: str | None = None) -> sf.IndexD
 def _utc(t: datetime.datetime | None) -> np.datetime64:
     if t is None:
         return NAT
-    return np.datetime64(t.astimezone(datetime.UTC).replace(tzinfo=None), "s")
+    return np.datetime64(t.astimezone(datetime.UTC).replace(tzinfo=None), 's')
 
 
 # The schedule's columns, in `ScheduleRowUTC`'s field order, with every dtype
 # given so the constructor need not infer one.
 SCHEDULE_DTYPES: dict[str, object] = {
-    "open": "datetime64[s]",
-    "break_start": "datetime64[s]",
-    "break_end": "datetime64[s]",
-    "close": "datetime64[s]",
-    "kind": str,
-    "verification": str,
-    "reason": object,
+    'open': 'datetime64[s]',
+    'break_start': 'datetime64[s]',
+    'break_end': 'datetime64[s]',
+    'close': 'datetime64[s]',
+    'kind': str,
+    'verification': str,
+    'reason': object,
 }
 SCHEDULE_COLUMNS = tuple(f.name for f in dataclasses.fields(ScheduleRowUTC))
 
@@ -151,13 +151,13 @@ def _schedule(rows: Sequence[ScheduleRow]) -> sf.Frame:
         # records; an empty schedule keeps its `IndexDate` and dtypes.
         return sf.Frame.from_dict(
             {c: np.array([], dtype=d) for c, d in SCHEDULE_DTYPES.items()},  # type: ignore[call-overload]
-            index=_index([], name="session"),
-            name="schedule",
+            index=_index([], name='session'),
+            name='schedule',
         )
     return sf.Frame.from_records(
         (r.to_utc() for r in rows),
-        index=_index([r.date for r in rows], name="session"),
+        index=_index([r.date for r in rows], name='session'),
         columns=SCHEDULE_COLUMNS,
         dtypes=SCHEDULE_DTYPES,
-        name="schedule",
+        name='schedule',
     )

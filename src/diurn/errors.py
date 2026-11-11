@@ -12,20 +12,20 @@ import datetime
 from typing import Any
 
 __all__ = [
-    "ApiError",
-    "AuthError",
-    "BadRequest",
-    "DiurnError",
-    "Indeterminate",
-    "IndeterminateResponse",
-    "MicCapExceeded",
-    "NotInPlan",
-    "OutOfWindow",
-    "OverLimit",
-    "RateLimited",
-    "TransportError",
-    "Unavailable",
-    "UnknownVenue",
+    'ApiError',
+    'AuthError',
+    'BadRequest',
+    'DiurnError',
+    'Indeterminate',
+    'IndeterminateResponse',
+    'MicCapExceeded',
+    'NotInPlan',
+    'OutOfWindow',
+    'OverLimit',
+    'RateLimited',
+    'TransportError',
+    'Unavailable',
+    'UnknownVenue',
 ]
 
 
@@ -46,7 +46,7 @@ class ApiError(DiurnError):
     """
 
     def __init__(self, status: int, error: str, message: str, body: dict[str, Any] | None = None):
-        super().__init__(f"{error}: {message}" if message else error)
+        super().__init__(f'{error}: {message}' if message else error)
         self.status = status
         self.error = error
         self.message = message
@@ -78,8 +78,8 @@ class Indeterminate(DiurnError):
     `on_unknown="missing"` to get a missing value instead of this error.
     """
 
-    def __init__(self, mic: str, date: datetime.date, message: str = ""):
-        super().__init__(message or f"{mic} cannot be answered for {date.isoformat()}")
+    def __init__(self, mic: str, date: datetime.date, message: str = ''):
+        super().__init__(message or f'{mic} cannot be answered for {date.isoformat()}')
         self.mic = mic
         self.date = date
 
@@ -95,13 +95,13 @@ class IndeterminateResponse(ApiError, Indeterminate):
         # Both parents set attributes and call `super().__init__` with
         # different arguments, so neither initialiser is chained: the fields
         # of each are set here.
-        Exception.__init__(self, f"{error}: {message}" if message else error)
+        Exception.__init__(self, f'{error}: {message}' if message else error)
         self.status = status
         self.error = error
         self.message = message
         self.body = body or {}
-        self.mic = ""
-        self.date = _date(self.body.get("date"))  # type: ignore[assignment]
+        self.mic = ''
+        self.date = _date(self.body.get('date'))  # type: ignore[assignment]
 
 
 class Unavailable(ApiError):
@@ -117,9 +117,9 @@ class OverLimit(ApiError):
     def __init__(self, status: int, error: str, message: str, body: dict[str, Any] | None = None):
         super().__init__(status, error, message, body)
         b = self.body
-        self.limit: dict[str, Any] | None = b.get("limit")
-        self.resets_at: str | None = b.get("resets_at")
-        self.upgrade: str | None = b.get("upgrade")
+        self.limit: dict[str, Any] | None = b.get('limit')
+        self.resets_at: str | None = b.get('resets_at')
+        self.upgrade: str | None = b.get('upgrade')
 
 
 class NotInPlan(OverLimit):
@@ -132,9 +132,9 @@ class OutOfWindow(OverLimit):
 
     def __init__(self, status: int, error: str, message: str, body: dict[str, Any] | None = None):
         super().__init__(status, error, message, body)
-        allowed = self.body.get("allowed") or {}
-        self.allowed_from = _date(allowed.get("from"))
-        self.allowed_to = _date(allowed.get("to"))
+        allowed = self.body.get('allowed') or {}
+        self.allowed_from = _date(allowed.get('from'))
+        self.allowed_to = _date(allowed.get('to'))
 
 
 class MicCapExceeded(OverLimit):
@@ -144,7 +144,7 @@ class MicCapExceeded(OverLimit):
 
     def __init__(self, status: int, error: str, message: str, body: dict[str, Any] | None = None):
         super().__init__(status, error, message, body)
-        self.mics_in_use: list[str] = list(self.body.get("mics_in_use") or [])
+        self.mics_in_use: list[str] = list(self.body.get('mics_in_use') or [])
 
 
 class RateLimited(OverLimit):
@@ -168,15 +168,15 @@ def _date(value: Any) -> datetime.date | None:
 
 
 _BY_TAG: dict[str, type[ApiError]] = {
-    "needs_key": AuthError,
-    "unauthorized": AuthError,
-    "not_in_plan": NotInPlan,
-    "out_of_window": OutOfWindow,
-    "mic_cap_exceeded": MicCapExceeded,
-    "rate_limited": RateLimited,
-    "indeterminate": IndeterminateResponse,
+    'needs_key': AuthError,
+    'unauthorized': AuthError,
+    'not_in_plan': NotInPlan,
+    'out_of_window': OutOfWindow,
+    'mic_cap_exceeded': MicCapExceeded,
+    'rate_limited': RateLimited,
+    'indeterminate': IndeterminateResponse,
     # A server without a key store (a local one) meters nothing.
-    "not_metered": ApiError,
+    'not_metered': ApiError,
 }
 
 _BY_STATUS: dict[int, type[ApiError]] = {
@@ -194,8 +194,8 @@ _BY_STATUS: dict[int, type[ApiError]] = {
 def from_response(status: int, body: dict[str, Any] | None, retry_after: float | None = None) -> ApiError:
     """The error class for an API error response."""
     body = body or {}
-    tag = str(body.get("error") or f"http_{status}")
-    message = str(body.get("message") or "")
+    tag = str(body.get('error') or f'http_{status}')
+    message = str(body.get('message') or '')
     cls = _BY_TAG.get(tag) or _BY_STATUS.get(status) or ApiError
     if cls is RateLimited:
         return RateLimited(status, tag, message, body, retry_after)

@@ -15,41 +15,41 @@ import urllib.request
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-OUT = ROOT / "tests" / "fixtures"
+OUT = ROOT / 'tests' / 'fixtures'
 
 REQUESTS = [
-    "/health",
-    "/v1/venues/XNYS",
-    "/v1/venues/XTKS",
-    "/v1/venues/XHKG",
-    "/v1/venues/XNYS/sessions?from=2026-01-01&to=2026-12-31",
-    "/v1/venues/XNYS/sessions?from=2027-01-01&to=2027-12-31",
-    "/v1/venues/XTKS/sessions?from=2026-01-01&to=2026-12-31",
-    "/v1/venues/XHKG/sessions?from=2026-01-01&to=2026-12-31",
+    '/health',
+    '/v1/venues/XNYS',
+    '/v1/venues/XTKS',
+    '/v1/venues/XHKG',
+    '/v1/venues/XNYS/sessions?from=2026-01-01&to=2026-12-31',
+    '/v1/venues/XNYS/sessions?from=2027-01-01&to=2027-12-31',
+    '/v1/venues/XTKS/sessions?from=2026-01-01&to=2026-12-31',
+    '/v1/venues/XHKG/sessions?from=2026-01-01&to=2026-12-31',
     # Every session scoped to a product: CME's metals and energy, by way of NYMEX.
-    "/v1/venues/XCEC",
-    "/v1/venues/XCEC/sessions?from=2026-01-01&to=2026-12-31",
+    '/v1/venues/XCEC',
+    '/v1/venues/XCEC/sessions?from=2026-01-01&to=2026-12-31',
     # A holiday that trades: NSE's Muhurat session on 8 November.
-    "/v1/venues/XNSE",
-    "/v1/venues/XNSE/sessions?from=2026-01-01&to=2026-12-31",
+    '/v1/venues/XNSE',
+    '/v1/venues/XNSE/sessions?from=2026-01-01&to=2026-12-31',
 ]
 
 
 def name(path: str) -> str:
     """The fixture file for a request path; the tests' fake transport uses it too."""
-    return path.strip("/").replace("/", "_").replace("?", "__").replace("&", "_").replace("=", "-") + ".json"
+    return path.strip('/').replace('/', '_').replace('?', '__').replace('&', '_').replace('=', '-') + '.json'
 
 
 def main() -> int:
-    base = sys.argv[1].rstrip("/") if len(sys.argv) > 1 else "http://127.0.0.1:8099"
+    base = sys.argv[1].rstrip('/') if len(sys.argv) > 1 else 'http://127.0.0.1:8099'
     OUT.mkdir(parents=True, exist_ok=True)
     for path in REQUESTS:
         with urllib.request.urlopen(base + path, timeout=30) as r:
             body = json.load(r)
-        (OUT / name(path)).write_text(json.dumps(body, indent=1, sort_keys=True) + "\n")
-        print("recorded", path)
+        (OUT / name(path)).write_text(json.dumps(body, indent=1, sort_keys=True) + '\n')
+        print('recorded', path)
     return 0
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     sys.exit(main())

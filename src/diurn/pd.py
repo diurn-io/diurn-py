@@ -37,9 +37,9 @@ from . import _core
 from ._core import OnUnknown, ScheduleRow
 from .client import Client
 
-__all__ = ["Calendar", "get_calendar"]
+__all__ = ['Calendar', 'get_calendar']
 
-SCHEDULE_COLUMNS = ["open", "break_start", "break_end", "close", "kind", "verification", "reason"]
+SCHEDULE_COLUMNS = ['open', 'break_start', 'break_end', 'close', 'kind', 'verification', 'reason']
 
 
 class Calendar:
@@ -50,7 +50,7 @@ class Calendar:
         self.core = core
 
     def __repr__(self) -> str:
-        return repr(self.core).replace("<Calendar", "<diurn.pd.Calendar", 1)
+        return repr(self.core).replace('<Calendar', '<diurn.pd.Calendar', 1)
 
     @property
     def mic(self) -> str:
@@ -86,7 +86,7 @@ class Calendar:
     def previous_session(self, date: object) -> pd.Timestamp:
         return _ts(self.core.previous_session(date))
 
-    def date_to_session(self, date: object, direction: str = "none") -> pd.Timestamp:
+    def date_to_session(self, date: object, direction: str = 'none') -> pd.Timestamp:
         return _ts(self.core.date_to_session(date, direction))  # type: ignore[arg-type]
 
     def sessions_window(self, session: object, count: int) -> pd.DatetimeIndex:
@@ -112,7 +112,7 @@ def get_calendar(
     mic: str,
     *,
     client: Client | None = None,
-    on_unknown: OnUnknown = "raise",
+    on_unknown: OnUnknown = 'raise',
     product: str | None = None,
     cache: bool = True,
     as_of: datetime.datetime | str | None = None,
@@ -128,7 +128,7 @@ def _ts(d: datetime.date | None) -> pd.Timestamp:
 
 
 def _index(dates: Sequence[datetime.date]) -> pd.DatetimeIndex:
-    return pd.DatetimeIndex([pd.Timestamp(d) for d in dates], dtype="datetime64[ns]")
+    return pd.DatetimeIndex([pd.Timestamp(d) for d in dates], dtype='datetime64[ns]')
 
 
 def _instant(t: datetime.datetime | None) -> pd.Timestamp:
@@ -138,13 +138,13 @@ def _instant(t: datetime.datetime | None) -> pd.Timestamp:
 def _schedule(rows: Sequence[ScheduleRow], tz: str) -> pd.DataFrame:
     index = _index([r.date for r in rows])
     data: dict[str, object] = {}
-    for col in ("open", "break_start", "break_end", "close"):
+    for col in ('open', 'break_start', 'break_end', 'close'):
         data[col] = pd.DatetimeIndex(
             [pd.NaT if getattr(r, col) is None else pd.Timestamp(getattr(r, col)) for r in rows],
-            dtype=f"datetime64[ns, {tz}]",
+            dtype=f'datetime64[ns, {tz}]',
         )
-    for col in ("kind", "verification", "reason"):
+    for col in ('kind', 'verification', 'reason'):
         data[col] = [getattr(r, col) for r in rows]
     frame = pd.DataFrame(data, index=index, columns=SCHEDULE_COLUMNS)
-    frame.index.name = "session"
+    frame.index.name = 'session'
     return frame

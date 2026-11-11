@@ -23,10 +23,10 @@ from ._cache import DiskCache
 from ._instant import parse_instant, to_date, to_instant
 from .client import Client
 
-__all__ = ["TRADING_KINDS", "Calendar", "Day", "OnUnknown", "ScheduleRow", "ScheduleRowUTC", "Session"]
+__all__ = ['TRADING_KINDS', 'Calendar', 'Day', 'OnUnknown', 'ScheduleRow', 'ScheduleRowUTC', 'Session']
 
-TRADING_KINDS = frozenset({"open", "early_close", "open_for_some"})
-OnUnknown = Literal["raise", "missing"]
+TRADING_KINDS = frozenset({'open', 'early_close', 'open_for_some'})
+OnUnknown = Literal['raise', 'missing']
 
 # How far a stepping method looks before giving up: past this, nothing was
 # found, which on a real venue means the answer is beyond what Diurn serves.
@@ -57,13 +57,13 @@ class Day:
 
     @property
     def is_unknown(self) -> bool:
-        return self.kind == "unknown"
+        return self.kind == 'unknown'
 
     @property
     def is_session(self) -> bool:
         """Whether the venue trades: as `/v1/trading-days` reads a day. A
         holiday trades if it carries a session, which is Muhurat."""
-        return self.kind in TRADING_KINDS or (self.kind == "holiday" and bool(self.sessions))
+        return self.kind in TRADING_KINDS or (self.kind == 'holiday' and bool(self.sessions))
 
 
 @dataclass(frozen=True, slots=True)
@@ -133,17 +133,17 @@ class Calendar:
         mic: str,
         client: Client | None = None,
         *,
-        on_unknown: OnUnknown = "raise",
+        on_unknown: OnUnknown = 'raise',
         product: str | None = None,
         cache: bool | DiskCache = True,
         as_of: datetime.datetime | str | None = None,
     ):
-        if on_unknown not in ("raise", "missing"):
+        if on_unknown not in ('raise', 'missing'):
             raise ValueError("on_unknown is 'raise' or 'missing'")
         self.client = client or Client()
         record = self.client.venue(mic)
         if record.timezone is None or record.resolution is None:
-            raise errors.UnknownVenue(404, "no_calendar", f"no calendar answers {record.mic}")
+            raise errors.UnknownVenue(404, 'no_calendar', f'no calendar answers {record.mic}')
         self.mic = record.mic
         # As in `exchange_calendars`, a calendar's name is its code.
         self.name = record.mic
@@ -151,7 +151,7 @@ class Calendar:
         self.tz = record.timezone
         self.products: tuple[str, ...] = tuple(record.products)
         if product is not None and product not in self.products:
-            raise ValueError(f"{self.mic} has no product {product!r}; it has {self.products}")
+            raise ValueError(f'{self.mic} has no product {product!r}; it has {self.products}')
         self.product = product
         self.on_unknown = on_unknown
         self.as_of = None if as_of is None else to_instant(as_of)
@@ -168,7 +168,7 @@ class Calendar:
         self._window_day: datetime.date | None = None
 
     def __repr__(self) -> str:
-        return f"<Calendar {self.mic} {self.market_name} ({self.tz})>"
+        return f'<Calendar {self.mic} {self.market_name} ({self.tz})>'
 
     # --- days ------------------------------------------------------------------
 
@@ -217,7 +217,7 @@ class Calendar:
         return self._step(to_date(date), -1)
 
     def date_to_session(
-        self, date: object, direction: Literal["none", "next", "previous"] = "none"
+        self, date: object, direction: Literal['none', 'next', 'previous'] = 'none'
     ) -> datetime.date | None:
         """`date` if it is a session; otherwise the next or previous one, or
         (`direction="none"`) a `ValueError`."""
@@ -227,9 +227,9 @@ class Calendar:
             return None
         if here:
             return d
-        if direction == "next":
+        if direction == 'next':
             return self._step(d, 1)
-        if direction == "previous":
+        if direction == 'previous':
             return self._step(d, -1)
         raise ValueError(f"{d} is not a session of {self.mic}; pass direction='next' or 'previous'")
 
@@ -239,9 +239,9 @@ class Calendar:
         a session."""
         d = to_date(session)
         if not self.is_session(d):
-            raise ValueError(f"{d} is not a session of {self.mic}")
+            raise ValueError(f'{d} is not a session of {self.mic}')
         if count == 0:
-            raise ValueError("count is not zero")
+            raise ValueError('count is not zero')
         out = [d]
         step = 1 if count > 0 else -1
         while len(out) < abs(count):
@@ -267,11 +267,11 @@ class Calendar:
 
     def next_open(self, when: object) -> datetime.datetime | None:
         """The first session open after the instant."""
-        return self._next_edge(to_instant(when), "open")
+        return self._next_edge(to_instant(when), 'open')
 
     def next_close(self, when: object) -> datetime.datetime | None:
         """The first session close after the instant."""
-        return self._next_edge(to_instant(when), "close")
+        return self._next_edge(to_instant(when), 'close')
 
     def schedule(self, start: object, end: object, *, all_days: bool = False) -> list[ScheduleRow]:
         """One row per session from `start` to `end`; with `all_days=True`, one
@@ -292,7 +292,7 @@ class Calendar:
     def _unknown(self, day: Day) -> None:
         """Raise for an unknown day, unless the calendar was asked for a
         missing value instead; then the caller answers None."""
-        if self.on_unknown != "missing":
+        if self.on_unknown != 'missing':
             raise errors.Indeterminate(self.mic, day.date)
 
     def _sessions(self, day: Day) -> tuple[Session, ...]:
@@ -334,10 +334,10 @@ class Calendar:
         With `on_unknown="missing"` the caller answers a missing value, as for
         an unknown day; otherwise this raises rather than let a missing value
         the caller did not ask for stand in for one."""
-        if self.on_unknown == "missing":
+        if self.on_unknown == 'missing':
             return
         raise errors.Indeterminate(
-            self.mic, start, f"{self.mic} has no session within {_SCAN_DAYS} days of {start.isoformat()}"
+            self.mic, start, f'{self.mic} has no session within {_SCAN_DAYS} days of {start.isoformat()}'
         )
 
     def _next_edge(self, t: datetime.datetime, edge: str) -> datetime.datetime | None:
@@ -348,7 +348,7 @@ class Calendar:
                 self._unknown(day)
                 return None
             found: list[datetime.datetime] = sorted(
-                s.open if edge == "open" else s.close for s in self._sessions(day)
+                s.open if edge == 'open' else s.close for s in self._sessions(day)
             )
             for x in found:
                 if x > t:
@@ -376,9 +376,9 @@ class Calendar:
         if (lo is not None and start < lo) or (hi is not None and end > hi):
             raise errors.OutOfWindow(
                 403,
-                "out_of_window",
-                f"{start}..{end} is outside the dates your plan may ask about",
-                {"allowed": {"from": lo and lo.isoformat(), "to": hi and hi.isoformat()}},
+                'out_of_window',
+                f'{start}..{end} is outside the dates your plan may ask about',
+                {'allowed': {'from': lo and lo.isoformat(), 'to': hi and hi.isoformat()}},
             )
         for year in range(start.year, end.year + 1):
             if year in self._years:
@@ -391,33 +391,33 @@ class Calendar:
 
     def _fetch(self, a: datetime.date, b: datetime.date) -> list[Day]:
         def fetch() -> Any:
-            params = {"from": a, "to": b, "as_of": self.as_of}
-            return self.client.transport.get(f"/v1/venues/{self.mic}/sessions", params)
+            params = {'from': a, 'to': b, 'as_of': self.as_of}
+            return self.client.transport.get(f'/v1/venues/{self.mic}/sessions', params)
 
         if self._cache is not None:
-            raw = self._cache.get_or_fetch(f"sessions {self.mic} {a} {b}", fetch)
+            raw = self._cache.get_or_fetch(f'sessions {self.mic} {a} {b}', fetch)
         else:
             raw = fetch()
-        return [_day(d) for d in raw["days"]]
+        return [_day(d) for d in raw['days']]
 
 
 def _day(raw: dict[str, Any]) -> Day:
     sessions = tuple(
         Session(
-            name=s["name"],
-            open=parse_instant(s["open"]),
-            close=parse_instant(s["close"]),
-            breaks=tuple((parse_instant(b["start"]), parse_instant(b["end"])) for b in s.get("breaks") or ()),
-            products=s.get("products"),
-            verification=s["verification"],
+            name=s['name'],
+            open=parse_instant(s['open']),
+            close=parse_instant(s['close']),
+            breaks=tuple((parse_instant(b['start']), parse_instant(b['end'])) for b in s.get('breaks') or ()),
+            products=s.get('products'),
+            verification=s['verification'],
         )
-        for s in raw.get("sessions") or ()
+        for s in raw.get('sessions') or ()
     )
     return Day(
-        date=datetime.date.fromisoformat(raw["date"]),
-        kind=raw["kind"],
-        verification=raw["verification"],
-        reason=raw.get("reason"),
+        date=datetime.date.fromisoformat(raw['date']),
+        kind=raw['kind'],
+        verification=raw['verification'],
+        reason=raw.get('reason'),
         sessions=sessions,
     )
 

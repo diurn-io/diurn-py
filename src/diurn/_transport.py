@@ -19,10 +19,10 @@ from typing import Any
 from . import errors
 from ._version import __version__
 
-__all__ = ["DEFAULT_URL", "Response", "Send", "Transport"]
+__all__ = ['DEFAULT_URL', 'Response', 'Send', 'Transport']
 
-DEFAULT_URL = "https://api.diurn.io"
-USER_AGENT = f"diurn-py/{__version__}"
+DEFAULT_URL = 'https://api.diurn.io'
+USER_AGENT = f'diurn-py/{__version__}'
 
 
 @dataclass(frozen=True)
@@ -46,7 +46,7 @@ def urllib_send(
     except urllib.error.HTTPError as e:
         return Response(e.code, {k.lower(): v for k, v in e.headers.items()}, e.read())
     except (urllib.error.URLError, TimeoutError, OSError) as e:
-        raise errors.TransportError(f"{method} {url}: {e}") from e
+        raise errors.TransportError(f'{method} {url}: {e}') from e
 
 
 class Transport:
@@ -59,37 +59,37 @@ class Transport:
         timeout: float = 30.0,
         send: Send | None = None,
     ):
-        self.api_key = api_key if api_key is not None else os.environ.get("DIURN_API_KEY")
-        self.base_url = (base_url or os.environ.get("DIURN_API_URL") or DEFAULT_URL).rstrip("/")
+        self.api_key = api_key if api_key is not None else os.environ.get('DIURN_API_KEY')
+        self.base_url = (base_url or os.environ.get('DIURN_API_URL') or DEFAULT_URL).rstrip('/')
         self.timeout = timeout
         self.send = send or urllib_send
         self.last_headers: Mapping[str, str] = {}
 
     def get(self, path: str, params: Mapping[str, Any] | None = None) -> Any:
         query = urllib.parse.urlencode({k: _param(v) for k, v in (params or {}).items() if v is not None})
-        return self.request("GET", path + (f"?{query}" if query else ""), None)
+        return self.request('GET', path + (f'?{query}' if query else ''), None)
 
     def post(self, path: str, body: Mapping[str, Any]) -> Any:
         data = json.dumps({k: _body(v) for k, v in body.items() if v is not None}).encode()
-        return self.request("POST", path, data)
+        return self.request('POST', path, data)
 
     def request(self, method: str, path_and_query: str, body: bytes | None) -> Any:
-        headers = {"Accept": "application/json", "User-Agent": USER_AGENT}
+        headers = {'Accept': 'application/json', 'User-Agent': USER_AGENT}
         if body is not None:
-            headers["Content-Type"] = "application/json"
+            headers['Content-Type'] = 'application/json'
         if self.api_key:
-            headers["Authorization"] = f"Bearer {self.api_key}"
+            headers['Authorization'] = f'Bearer {self.api_key}'
         url = self.base_url + path_and_query
         r = self.send(method, url, headers, body, self.timeout)
         self.last_headers = r.headers
         parsed = _json(r.body)
         if 200 <= r.status < 300:
             if parsed is _NOT_JSON:
-                raise errors.TransportError(f"{method} {url}: answered {r.status} without JSON")
+                raise errors.TransportError(f'{method} {url}: answered {r.status} without JSON')
             return parsed
         if parsed is _NOT_JSON or not isinstance(parsed, dict):
             if r.status >= 500:
-                raise errors.TransportError(f"{method} {url}: answered {r.status}")
+                raise errors.TransportError(f'{method} {url}: answered {r.status}')
             parsed = {}
         raise errors.from_response(r.status, parsed, _retry_after(r.headers))
 
@@ -105,7 +105,7 @@ def _json(body: bytes) -> Any:
 
 
 def _retry_after(headers: Mapping[str, str]) -> float | None:
-    value = headers.get("retry-after")
+    value = headers.get('retry-after')
     try:
         return float(value) if value is not None else None
     except ValueError:
@@ -115,10 +115,10 @@ def _retry_after(headers: Mapping[str, str]) -> float | None:
 def _param(value: Any) -> Any:
     """Query and body values as the API spells them."""
     if isinstance(value, bool):
-        return "true" if value else "false"
+        return 'true' if value else 'false'
     if isinstance(value, (list, tuple)):
-        return ",".join(str(v) for v in value)
-    isoformat = getattr(value, "isoformat", None)
+        return ','.join(str(v) for v in value)
+    isoformat = getattr(value, 'isoformat', None)
     if isoformat is not None:
         return isoformat()
     return value
@@ -131,5 +131,5 @@ def _body(value: Any) -> Any:
         return [_body(v) for v in value]
     if isinstance(value, (bool, int, float, str)):
         return value
-    isoformat = getattr(value, "isoformat", None)
+    isoformat = getattr(value, 'isoformat', None)
     return isoformat() if isoformat is not None else value

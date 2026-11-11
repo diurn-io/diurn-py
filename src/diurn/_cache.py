@@ -28,7 +28,7 @@ from typing import Any
 
 from . import errors
 
-__all__ = ["DiskCache", "default_dir"]
+__all__ = ['DiskCache', 'default_dir']
 
 
 def default_dir(
@@ -42,23 +42,23 @@ def default_dir(
     platform = sys.platform if platform is None else platform
     env = os.environ if environ is None else environ
     home = Path.home() if home is None else home
-    explicit = env.get("DIURN_CACHE_DIR")
+    explicit = env.get('DIURN_CACHE_DIR')
     if explicit:
         return Path(explicit)
     # Set by the user, so honoured wherever it is set, as uv and others do.
-    xdg = env.get("XDG_CACHE_HOME")
+    xdg = env.get('XDG_CACHE_HOME')
     if xdg:
-        return Path(xdg) / "diurn"
-    if platform == "darwin":
+        return Path(xdg) / 'diurn'
+    if platform == 'darwin':
         # Where macOS expects caches: skipped by Time Machine, and cleared by
         # the tools that reclaim space.
-        return home / "Library" / "Caches" / "diurn"
-    if platform == "win32":
+        return home / 'Library' / 'Caches' / 'diurn'
+    if platform == 'win32':
         # Local, not roaming: a cache should not follow a profile around.
-        local = env.get("LOCALAPPDATA")
-        base = Path(local) if local else home / "AppData" / "Local"
-        return base / "diurn" / "Cache"
-    return home / ".cache" / "diurn"
+        local = env.get('LOCALAPPDATA')
+        base = Path(local) if local else home / 'AppData' / 'Local'
+        return base / 'diurn' / 'Cache'
+    return home / '.cache' / 'diurn'
 
 
 class DiskCache:
@@ -94,7 +94,7 @@ class DiskCache:
         dataset = self.dataset_id()
         if dataset is None:
             return fetch()
-        path = self.root / dataset / f"{hashlib.sha256(key.encode()).hexdigest()}.json"
+        path = self.root / dataset / f'{hashlib.sha256(key.encode()).hexdigest()}.json'
         try:
             return json.loads(path.read_text())
         except (OSError, ValueError):
@@ -104,7 +104,7 @@ class DiskCache:
             path.parent.mkdir(parents=True, exist_ok=True)
             # A temporary file of its own, so processes sharing the cache
             # cannot write into one another's before the rename.
-            with tempfile.NamedTemporaryFile("w", dir=path.parent, suffix=".tmp", delete=False) as tmp:
+            with tempfile.NamedTemporaryFile('w', dir=path.parent, suffix='.tmp', delete=False) as tmp:
                 tmp.write(json.dumps(value))
             Path(tmp.name).replace(path)
         except OSError:
